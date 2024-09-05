@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TierList Maker</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      .main {
+        display: flex; /* Enable Flexbox for the main container */
+        gap: 20px; /* Optional: add space between the elements */
+      }
+
+      .tiers.container {
+        flex: 2.5; /* Each div will take up equal space */
+        border: 0px solid #000000; /* Optional: add border for visibility */
+        padding: 10px;
+        box-sizing: border-box; /* Ensures padding is included in width */
+      }
+
+      .scroll-container {
+        flex: 0.80; /* Each div will take up equal space */
+        border: 3px solid #000000; /* Optional: add border for visibility */
+        padding: 10px;
+        box-sizing: border-box; /* Ensures padding is included in width */
+      }
+
+      .game-title-container {
+        flex: 0.75; /* Each div will take up equal space */
+        padding: 10px;
+        box-sizing: border-box; /* Ensures padding is included in width */
+      }
+
+      .left-align {
+        text-align: left; /* Align text to the left */
+        margin-left: 0; /* Optional: remove any default margin */
+      }
+      .right-align {
+        text-align: right; /* Align text to the left */
+        margin-left: 0; /* Optional: remove any default margin */
+      }
+    </style>
+    <script type="module" src="/static/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  </head>
+  <body>
+    <h1 align="left">TierList Maker</h1>
+    <div class="left-align">
+      <button id="saveAsPngButton">Save as PNG</button>
+      <form id="inputForm", align="left">
+        <label for="input_data">Enter some data:</label>
+        <input type="text" id="input_data" name="input_data" required>
+        <button type="submit">Submit</button>
+        <p id="response"></p>
+      </form>
+    </div>
+    <div class="right-align">
+      <button id="saveButton">Save Tier List</button>
+      <input type="file" id="loadButton" accept=".json" ></div>
+      
+    </div>
+    <div class="main">
+      <div class="scroll-container"></div>
+      <div class="tiers container"></div>
+      <div class="game-title-container"></div>
+    </div>
+    <dialog class="settings-modal">
+      <section>
+        <div class="colors"></div>
+
+        <textarea class="tier-label" placeholder="Tier label"></textarea>
+
+        <button id="delete">Delete Row</button>
+        <button id="clear">Clear Row</button>
+        <button id="prepend">Add a Row Above</button>
+        <button id="append">Add a Row Below</button>
+      </section>
+    </dialog>
+
+    
+
+    
+    <div id="imageContainer"></div>
+    
+    <script>
+      document.getElementById('inputForm').addEventListener('submit', function(event) {
+          event.preventDefault();
+  
+          const formData = new FormData(this);
+  
+          fetch('/submit', {
+              method: 'POST',
+              body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+              document.getElementById('response').innerText = data.response;
+  
+              const imageContainer = document.querySelector('.scroll-container');
+              imageContainer.innerHTML = '';
+  
+              if (data.boxarts) {
+                  data.boxarts.forEach(([url, title]) => {
+                      const imgElement = document.createElement('img');
+                      imgElement.src = url;
+                      imgElement.alt = title;
+                      imgElement.draggable = true;
+                      imgElement.style.margin = '5px';
+                      imgElement.addEventListener('dragstart', handleDragStart);
+                      imgElement.addEventListener('dragend', handleDragEnd);
+                      imgElement.addEventListener('dblclick', handleImageRemove); // Add double-click event
+                      imageContainer.appendChild(imgElement);
+                  });
+              }
+          })
+          .catch(error => console.error('Error:', error));
+      });
+  
+      function handleDragStart(event) {
+          event.dataTransfer.setData('text/plain', event.target.src);
+          event.target.classList.add('dragging');
+      }
+  
+      function handleDragEnd(event) {
+          event.target.classList.remove('dragging');
+      }
+  
+      function handleDragover(event) {
+          event.preventDefault(); // Allow drop
+      }
+  
+      function handleDrop(event) {
+          event.preventDefault(); // Prevent default browser handling
+  
+          const draggedImage = document.querySelector('.dragging');
+          if (!draggedImage) {
+              console.error('No image is being dragged.');
+              return;
+          }
+  
+          const target = event.target;
+          if (target.classList.contains("items")) {
+              target.appendChild(draggedImage);
+              updateAltTextColorAndOrder();
+          } else if (target.tagName === "IMG" && target !== draggedImage) {
+              const { left, width } = target.getBoundingClientRect();
+              const midPoint = left + width / 2;
+  
+              if (event.clientX < midPoint) {
+                  target.before(draggedImage);
+              } else {
+                  target.after(draggedImage);
+              }
+              updateAltTextColorAndOrder();
+          }
+      }
+  
+      function handleImageRemove(event) {
+          // Remove the image from the tier
+          const image = event.target;
+          image.remove();
+  
+          // Update the alt text in the game-title-container
+          updateAltTextColorAndOrder();
+      }
+  
+      function updateAltTextColorAndOrder() {
+          const gameTitleContainer = document.querySelector('.game-title-container');
+          gameTitleContainer.innerHTML = ''; // Clear existing titles
+  
+          // Iterate over each tier and collect the images and their alt texts
+          const tiers = document.querySelectorAll('.tier');
+          tiers.forEach(tier => {
+              const tierColor = window.getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color');
+              const images = tier.querySelectorAll('.items img');
+              
+              images.forEach(image => {
+                  const altText = image.alt;
+                  const titleElement = document.createElement('p');
+                  titleElement.textContent = altText;
+                  titleElement.style.color = tierColor;
+                  titleElement.contentEditable = true; // Make the text editable
+                  titleElement.addEventListener('blur', () => handleTextEdit(titleElement, image)); // Add blur event to handle editing
+                  gameTitleContainer.appendChild(titleElement);
+              });
+          });
+      }
+  
+      function handleTextEdit(titleElement, image) {
+          // Update the alt text of the image with the new text
+          const newAltText = titleElement.textContent;
+          image.alt = newAltText;
+      }
+  
+      function makeImagesDraggable() {
+          const images = document.querySelectorAll('.scroll-container img');
+          images.forEach((img) => {
+              img.draggable = true;
+              img.addEventListener('dragstart', handleDragStart);
+              img.addEventListener('dragend', handleDragEnd);
+              img.addEventListener('dblclick', handleImageRemove); // Add double-click event for removal
+          });
+      }
+  </script>
+  
+  
+  
+  </body>
+</html>
