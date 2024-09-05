@@ -137,7 +137,7 @@ function updateAltTextColorAndOrder() {
 }
 
       // Function to extract the current state of the tier list and save it to a JSON file
-      function saveTierList() {
+function saveTierList() {
         const tierData = [];
 
         // Iterate over each tier to collect data
@@ -162,10 +162,10 @@ function updateAltTextColorAndOrder() {
         link.href = URL.createObjectURL(blob);
         link.download = 'tier_list.json';
         link.click();
-    }
+}
 
     // Function to load a tier list from a JSON file
-    function loadTierList(event) {
+function loadTierList(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -215,53 +215,59 @@ function updateAltTextColorAndOrder() {
     };
 
     reader.readAsText(file);
-  }
+}
 
     // Event listeners for the Save and Load buttons
     document.getElementById('saveButton').addEventListener('click', saveTierList);
     document.getElementById('loadButton').addEventListener('change', loadTierList);
 
-document.getElementById('saveAsPngButton').addEventListener('click', () => {
-    // Select the containers you want to capture
-    const tierListElement = document.querySelector('.tiers.container'); // Tier List container
-    const gameTitleContainer = document.querySelector('.game-title-container'); // Game Title container
+    document.getElementById('saveAsPngButton').addEventListener('click', () => {
+      // Select the containers you want to capture
+      const tierListElement = document.querySelector('.tiers.container'); // Tier List container
+      const gameTitleContainer = document.querySelector('.game-title-container'); // Game Title container
+  
+      // Create a temporary container to hold both elements
+      const tempContainer = document.createElement('div');
+      tempContainer.style.display = 'flex';
+      tempContainer.style.flexDirection = 'row'; // Position elements side by side
+      tempContainer.style.position = 'absolute'; // Position off-screen to avoid disrupting layout
+      tempContainer.style.top = '-9999px';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.width = `${tierListElement.offsetWidth + gameTitleContainer.offsetWidth}px`; // Set width based on contents
+      tempContainer.style.height = `${Math.max(tierListElement.offsetHeight, gameTitleContainer.offsetHeight)}px`; // Set height to the maximum height of the contents
+  
+      // Set the background color (change this to your desired color)
+      tempContainer.style.backgroundColor = '#1A1A17'; // Light grey background color
 
-    // Create a temporary container to hold both elements
-    const tempContainer = document.createElement('div');
-    tempContainer.style.display = 'flex';
-    tempContainer.style.flexDirection = 'column';
-    tempContainer.style.position = 'absolute'; // Position off-screen to avoid disrupting layout
-    tempContainer.style.top = '-9999px';
-
-    // Clone elements to ensure current state is captured
-    const tierListClone = tierListElement.cloneNode(true);
-    const gameTitleClone = gameTitleContainer.cloneNode(true);
-
-    // Append clones to the temporary container
-    tempContainer.appendChild(tierListClone);
-    tempContainer.appendChild(gameTitleClone);
-
-    // Append the temporary container to the body (hidden from view)
-    document.body.appendChild(tempContainer);
-
-    // Wait for images to load before capturing
-    html2canvas(tempContainer, { useCORS: true }).then((canvas) => {
-        // Convert the canvas to a PNG data URL
-        const dataURL = canvas.toDataURL('image/png');
-
-        // Create a download link for the PNG
-        const link = document.createElement('a');
-        link.href = dataURL;
-        link.download = 'tier_list.png';
-        link.click();
-
-        // Clean up: remove the temporary container
-        document.body.removeChild(tempContainer);
-    }).catch((error) => {
-        console.error('Failed to capture and save as PNG:', error);
-    });
-});
-
+      // Clone elements to ensure current state is captured
+      const tierListClone = tierListElement.cloneNode(true);
+      const gameTitleClone = gameTitleContainer.cloneNode(true);
+  
+      // Append clones to the temporary container
+      tempContainer.appendChild(tierListClone);
+      tempContainer.appendChild(gameTitleClone);
+  
+      // Append the temporary container to the body (hidden from view)
+      document.body.appendChild(tempContainer);
+  
+      // Wait for images to load before capturing
+      html2canvas(tempContainer, { useCORS: true }).then((canvas) => {
+          // Convert the canvas to a PNG data URL
+          const dataURL = canvas.toDataURL('image/png');
+  
+          // Create a download link for the PNG
+          const link = document.createElement('a');
+          link.href = dataURL;
+          link.download = 'tier_list.png';
+          link.click();
+  
+          // Clean up: remove the temporary container
+          document.body.removeChild(tempContainer);
+      }).catch((error) => {
+          console.error('Failed to capture and save as PNG:', error);
+      });
+  });
+  
   
 
 function handleTextEdit(titleElement, image) {

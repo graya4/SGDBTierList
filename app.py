@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify, render_template
 from steamgrid import SteamGridDB, StyleType, PlatformType, MimeType, ImageType
-from flask_cors import CORS
 import requests
+from flask import Flask, request, jsonify, render_template, send_file
+from flask_cors import CORS
+from io import BytesIO
 
 #https://github.com/ZebcoWeb/python-steamgriddb
 
@@ -55,13 +56,6 @@ def submit():
             for y in current_grids:
                 if y.width == 600 and y.height == 900:
                     boxarts.append([y.url, game_name])
-        for z in game:
-            GAME_ID = z.id
-            response = requests.get(API_URL, headers=headers, params=params)
-            if response.status_code == 200:
-                print("Success:", response.json())  # or response.text
-            else:
-                app.logger.error(f"Error: {response.status_code}", response.text)
         
     except:
         processed_data = "This game does not exist!"
@@ -71,21 +65,17 @@ def submit():
     #print(boxarts)
     return jsonify({'response': processed_data, 'boxarts' : boxarts})
 
+# Proxy route for handling CORS issues
 @app.route('/proxy')
 def proxy():
-    # Get the URL from the request parameters
     url = request.args.get('url')
     if not url:
         return jsonify({"error": "URL is required"}), 400
 
     try:
-        # Fetch the image from the external server
         response = requests.get(url)
         response.raise_for_status()
-
-        # Send the image back to the client
         return send_file(BytesIO(response.content), mimetype=response.headers['Content-Type'])
-
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 

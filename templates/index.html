@@ -87,124 +87,126 @@
     <div id="imageContainer"></div>
     
     <script>
-      document.getElementById('inputForm').addEventListener('submit', function(event) {
-          event.preventDefault();
-  
-          const formData = new FormData(this);
-  
-          fetch('/submit', {
-              method: 'POST',
-              body: formData
-          })
-          .then(response => response.json())
-          .then(data => {
-              document.getElementById('response').innerText = data.response;
-  
-              const imageContainer = document.querySelector('.scroll-container');
-              imageContainer.innerHTML = '';
-  
-              if (data.boxarts) {
-                  data.boxarts.forEach(([url, title]) => {
-                      const imgElement = document.createElement('img');
-                      imgElement.src = url;
-                      imgElement.alt = title;
-                      imgElement.draggable = true;
-                      imgElement.style.margin = '5px';
-                      imgElement.addEventListener('dragstart', handleDragStart);
-                      imgElement.addEventListener('dragend', handleDragEnd);
-                      imgElement.addEventListener('dblclick', handleImageRemove); // Add double-click event
-                      imageContainer.appendChild(imgElement);
-                  });
-              }
-          })
-          .catch(error => console.error('Error:', error));
-      });
-  
-      function handleDragStart(event) {
-          event.dataTransfer.setData('text/plain', event.target.src);
-          event.target.classList.add('dragging');
-      }
-  
-      function handleDragEnd(event) {
-          event.target.classList.remove('dragging');
-      }
-  
-      function handleDragover(event) {
-          event.preventDefault(); // Allow drop
-      }
-  
-      function handleDrop(event) {
-          event.preventDefault(); // Prevent default browser handling
-  
-          const draggedImage = document.querySelector('.dragging');
-          if (!draggedImage) {
-              console.error('No image is being dragged.');
-              return;
-          }
-  
-          const target = event.target;
-          if (target.classList.contains("items")) {
-              target.appendChild(draggedImage);
-              updateAltTextColorAndOrder();
-          } else if (target.tagName === "IMG" && target !== draggedImage) {
-              const { left, width } = target.getBoundingClientRect();
-              const midPoint = left + width / 2;
-  
-              if (event.clientX < midPoint) {
-                  target.before(draggedImage);
-              } else {
-                  target.after(draggedImage);
-              }
-              updateAltTextColorAndOrder();
-          }
-      }
-  
-      function handleImageRemove(event) {
-          // Remove the image from the tier
-          const image = event.target;
-          image.remove();
-  
-          // Update the alt text in the game-title-container
-          updateAltTextColorAndOrder();
-      }
-  
-      function updateAltTextColorAndOrder() {
-          const gameTitleContainer = document.querySelector('.game-title-container');
-          gameTitleContainer.innerHTML = ''; // Clear existing titles
-  
-          // Iterate over each tier and collect the images and their alt texts
-          const tiers = document.querySelectorAll('.tier');
-          tiers.forEach(tier => {
-              const tierColor = window.getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color');
-              const images = tier.querySelectorAll('.items img');
-              
-              images.forEach(image => {
-                  const altText = image.alt;
-                  const titleElement = document.createElement('p');
-                  titleElement.textContent = altText;
-                  titleElement.style.color = tierColor;
-                  titleElement.contentEditable = true; // Make the text editable
-                  titleElement.addEventListener('blur', () => handleTextEdit(titleElement, image)); // Add blur event to handle editing
-                  gameTitleContainer.appendChild(titleElement);
-              });
-          });
-      }
-  
-      function handleTextEdit(titleElement, image) {
-          // Update the alt text of the image with the new text
-          const newAltText = titleElement.textContent;
-          image.alt = newAltText;
-      }
-  
-      function makeImagesDraggable() {
-          const images = document.querySelectorAll('.scroll-container img');
-          images.forEach((img) => {
-              img.draggable = true;
-              img.addEventListener('dragstart', handleDragStart);
-              img.addEventListener('dragend', handleDragEnd);
-              img.addEventListener('dblclick', handleImageRemove); // Add double-click event for removal
-          });
-      }
+document.getElementById('inputForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const formData = new FormData(this);
+
+    fetch('/submit', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('response').innerText = data.response;
+
+        const imageContainer = document.querySelector('.scroll-container');
+        imageContainer.innerHTML = '';
+
+        if (data.boxarts) {
+            data.boxarts.forEach(([url, title]) => {
+                // Use the proxy to fetch the images
+                const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
+                const imgElement = document.createElement('img');
+                imgElement.src = proxyUrl;
+                imgElement.alt = title;
+                imgElement.draggable = true;
+                imgElement.style.margin = '5px';
+                imgElement.addEventListener('dragstart', handleDragStart);
+                imgElement.addEventListener('dragend', handleDragEnd);
+                imgElement.addEventListener('dblclick', handleImageRemove); // Add double-click event
+                imageContainer.appendChild(imgElement);
+            });
+        }
+    })
+    .catch(error => console.error('Error:', error));
+});
+
+function handleDragStart(event) {
+    event.dataTransfer.setData('text/plain', event.target.src);
+    event.target.classList.add('dragging');
+}
+
+function handleDragEnd(event) {
+    event.target.classList.remove('dragging');
+}
+
+function handleDragover(event) {
+    event.preventDefault(); // Allow drop
+}
+
+function handleDrop(event) {
+    event.preventDefault(); // Prevent default browser handling
+
+    const draggedImage = document.querySelector('.dragging');
+    if (!draggedImage) {
+        console.error('No image is being dragged.');
+        return;
+    }
+
+    const target = event.target;
+    if (target.classList.contains("items")) {
+        target.appendChild(draggedImage);
+        updateAltTextColorAndOrder();
+    } else if (target.tagName === "IMG" && target !== draggedImage) {
+        const { left, width } = target.getBoundingClientRect();
+        const midPoint = left + width / 2;
+
+        if (event.clientX < midPoint) {
+            target.before(draggedImage);
+        } else {
+            target.after(draggedImage);
+        }
+        updateAltTextColorAndOrder();
+    }
+}
+
+function handleImageRemove(event) {
+    // Remove the image from the tier
+    const image = event.target;
+    image.remove();
+
+    // Update the alt text in the game-title-container
+    updateAltTextColorAndOrder();
+}
+
+function updateAltTextColorAndOrder() {
+    const gameTitleContainer = document.querySelector('.game-title-container');
+    gameTitleContainer.innerHTML = ''; // Clear existing titles
+
+    // Iterate over each tier and collect the images and their alt texts
+    const tiers = document.querySelectorAll('.tier');
+    tiers.forEach(tier => {
+        const tierColor = window.getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color');
+        const images = tier.querySelectorAll('.items img');
+        
+        images.forEach(image => {
+            const altText = image.alt;
+            const titleElement = document.createElement('p');
+            titleElement.textContent = altText;
+            titleElement.style.color = tierColor;
+            titleElement.contentEditable = true; // Make the text editable
+            titleElement.addEventListener('blur', () => handleTextEdit(titleElement, image)); // Add blur event to handle editing
+            gameTitleContainer.appendChild(titleElement);
+        });
+    });
+}
+
+function handleTextEdit(titleElement, image) {
+    // Update the alt text of the image with the new text
+    const newAltText = titleElement.textContent;
+    image.alt = newAltText;
+}
+
+function makeImagesDraggable() {
+    const images = document.querySelectorAll('.scroll-container img');
+    images.forEach((img) => {
+        img.draggable = true;
+        img.addEventListener('dragstart', handleDragStart);
+        img.addEventListener('dragend', handleDragEnd);
+        img.addEventListener('dblclick', handleImageRemove); // Add double-click event for removal
+    });
+}
   </script>
   
   
