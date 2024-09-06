@@ -2,7 +2,7 @@
 
 * {
   font-family: "MS Gothic", sans-serif;
-  font-weight: 600;
+  font-size: medium;
   padding: 0;
   margin: 0;
   box-sizing: border-box;
@@ -40,6 +40,8 @@ img {
   overflow-y: scroll; /* Enables vertical scrolling */
   border: 2px solid #000000;
   padding: 10px;
+  scrollbar-color: #000000;
+  scrollbar-width: thin;
 }
 .scroll-container img {
   display: inline-block;
@@ -238,3 +240,66 @@ button {
   background: lightgray;
 }
 
+/* Navbar styling */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #333;
+  padding: 10px;
+  color: white;
+}
+
+.navbar-title {
+  margin: 0;
+  color: white;
+}
+
+.navbar-buttons {
+  display: flex;
+  align-items: center;
+}
+
+.left-align, .right-align {
+  gap: 15px; /* Space between buttons */
+}
+
+input[type="text"], input[type="file"], button, .button {
+  margin-left: 10px;
+  padding: 5px;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  display: inline-block;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+/* Style for text input bar */
+input[type="text"] {
+  background-color: white; /* Set background color to white */
+  color: black; /* Set text color to black for visibility */
+  border: 1px solid #ccc; /* Optional: Add a subtle border */
+  padding: 5px;
+}
+
+/* Button styles */
+button, .button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+button:hover, .button:hover {
+  background-color: #45a049;
+}
+
+/* Form input and response styling */
+.input-form {
+  display: flex;
+  align-items: center;
+}
+
+#response {
+  margin-left: 10px;
+  color: red;
+}

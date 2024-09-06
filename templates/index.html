@@ -23,44 +23,45 @@
       }
 
       .scroll-container {
-        flex: 0.80; /* Each div will take up equal space */
-        border: 3px solid #000000; /* Optional: add border for visibility */
+        flex: 0.85; /* Each div will take up equal space */
+        border: 0px solid;
+        background-color: #262626;
+        scrollbar-color: #000000;
         padding: 10px;
         box-sizing: border-box; /* Ensures padding is included in width */
       }
 
       .game-title-container {
-        flex: 0.75; /* Each div will take up equal space */
+        flex: 1; /* Each div will take up equal space */
         padding: 10px;
+        
         box-sizing: border-box; /* Ensures padding is included in width */
       }
 
-      .left-align {
-        text-align: left; /* Align text to the left */
-        margin-left: 0; /* Optional: remove any default margin */
-      }
-      .right-align {
-        text-align: right; /* Align text to the left */
-        margin-left: 0; /* Optional: remove any default margin */
-      }
     </style>
     <script type="module" src="/static/main.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   </head>
   <body>
-    <h1 align="left">TierList Maker</h1>
-    <div class="left-align">
-      <button id="saveAsPngButton">Save as PNG</button>
-      <form id="inputForm", align="left">
-        <label for="input_data">Enter some data:</label>
-        <input type="text" id="input_data" name="input_data" required>
-        <button type="submit">Submit</button>
-        <p id="response"></p>
-      </form>
-    </div>
-    <div class="right-align">
-      <button id="saveButton">Save Tier List</button>
-      <input type="file" id="loadButton" accept=".json" ></div>
+    <nav class="navbar">
+      <h1 class="navbar-title">TierList Maker</h1>
+      <div class="navbar-buttons left-align">
+        <form id="inputForm" class="input-form">
+          <label for="input_data">Enter some data:</label>
+          <input type="text" id="input_data" name="input_data" required>
+          <button type="submit">Submit</button>
+          <p id="response"></p>
+        </form>
+      </div>
+      <div class="navbar-buttons right-align">
+        <button id="saveAsPngButton">Render to PNG</button>
+        <button id="saveButton">Save Tier List</button>
+        <!-- Load button styled as a button -->
+        <label for="loadButton" class="button">Load Tier List</label>
+        <input type="file" id="loadButton" accept=".json" style="display: none;">
+      </div>
+    </nav>
+
       
     </div>
     <div class="main">
