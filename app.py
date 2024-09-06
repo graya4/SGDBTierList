@@ -11,14 +11,15 @@ from io import BytesIO
 ##On my phone so can't go into detail but basically you need to log into steam as an anonymous user then query the Steam PICS API and grab appinfo via GetProductInfo()
 ##There seems to be a working example here using a port of SteamKit2 to python: https://github.com/ValvePython/steam/blob/master/recipes%2F2.SimpleWebAPI%2Frun_webapi.py
 
+api_file = open('API_KEY.txt')
+API_KEY = api_file.readline()
 
-sgdb = SteamGridDB('ff89887258c97725a6826ec35796ad94')
+sgdb = SteamGridDB(API_KEY)
 app = Flask(__name__)
 CORS(app)
 
 from flask import Flask, request, render_template_string
 API_URL = 'https://www.steamgriddb.com/api/v2'
-API_KEY = 'ff89887258c97725a6826ec35796ad94'
 GAME_ID = 0
 
 headers = {
