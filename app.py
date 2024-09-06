@@ -11,9 +11,6 @@ from io import BytesIO
 ##On my phone so can't go into detail but basically you need to log into steam as an anonymous user then query the Steam PICS API and grab appinfo via GetProductInfo()
 ##There seems to be a working example here using a port of SteamKit2 to python: https://github.com/ValvePython/steam/blob/master/recipes%2F2.SimpleWebAPI%2Frun_webapi.py
 
-#render tier list as an image output
-
-#make it look pretty
 
 sgdb = SteamGridDB('ff89887258c97725a6826ec35796ad94')
 app = Flask(__name__)
