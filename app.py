@@ -3,6 +3,8 @@ import requests
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 from io import BytesIO
+from igdb.wrapper import IGDBWrapper
+
 
 #https://github.com/ZebcoWeb/python-steamgriddb
 
@@ -12,24 +14,51 @@ from io import BytesIO
 ##There seems to be a working example here using a port of SteamKit2 to python: https://github.com/ValvePython/steam/blob/master/recipes%2F2.SimpleWebAPI%2Frun_webapi.py
 
 api_file = open('API_KEY.txt')
-API_KEY = api_file.readline()
+API_KEY = api_file.readline().strip()
+CLIENT_ID = api_file.readline().strip()
+SECRET = api_file.readline().strip()
 
 sgdb = SteamGridDB(API_KEY)
 app = Flask(__name__)
 CORS(app)
 
-from flask import Flask, request, render_template_string
-API_URL = 'https://www.steamgriddb.com/api/v2'
-GAME_ID = 0
+url = "https://id.twitch.tv/oauth2/token"
+
+payload = {
+    "client_id": CLIENT_ID,        # Replace with your client ID
+    "client_secret": SECRET,  # Replace with your client secret
+    "grant_type": "client_credentials",   # Common grant type for access tokens
+}
+
+response_igdb = requests.post(url, data=payload)
+ACCESS_TOKEN = response_igdb.json()["access_token"]
 
 headers = {
-    "Authorization" : f"Bearer {API_KEY}"
+    'Client-ID': CLIENT_ID,
+    'Authorization': f'Bearer {ACCESS_TOKEN}'
 }
 
-params = {
-    "gameid" : GAME_ID,
-    "platformdata" : "steam"
-}
+def search_games(query):
+    url = 'https://api.igdb.com/v4/games'
+    # Define your query
+    body = f'search "{query}"; fields name, genres.name;'
+    
+    response_igdb2 = requests.post(url, headers=headers, data=body)
+    response_igdb2.raise_for_status()
+    return response_igdb2.json()
+
+def get_game_covers(game_ids):
+    url = 'https://api.igdb.com/v4/covers'
+    # Prepare the query to retrieve covers for specific game IDs
+    body = f'fields game, image_id, url, game_localization; where game = ({",".join(map(str, game_ids))});'
+    
+    response_igdb2 = requests.post(url, headers=headers, data=body)
+    response_igdb2.raise_for_status()
+    return response_igdb2.json()
+
+
+#clientID: oofxapi3vqhkq096jt2p295cteadjf
+#secret: ikbreh2p9boykmva5udlbjool0xc0z
 
 # Route for serving the HTML file
 @app.route('/')
@@ -41,20 +70,30 @@ def home():
 def submit():
     user_input = request.form['input_data']  # Retrieve the input data from the form
     processed_data = f"Received input: {user_input}"
-
+    boxarts = []
+    game_igdb = search_games(user_input)
+    igdb_name = game_igdb[0]['name']
+    game_id = game_igdb[0]['id']
+    game_covers = get_game_covers([game_id])
+    cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x')
+    cover_url = cover_url[2:]
+    cover_url = "https://" + cover_url
+    print(cover_url)
+    boxarts.append([cover_url, igdb_name])
     try:
     #print(user_input)
         game = sgdb.search_game(user_input)
         #print(game)
-        boxarts = []
+        
         for x in game:
-            print(x.id)
             current_grids = sgdb.get_grids_by_gameid([x.id])
             game_name = sgdb.get_game_by_gameid(x.id).name 
             for y in current_grids:
                 if y.width == 600 and y.height == 900:
                     boxarts.append([y.url, game_name])
-        
+
+
+    
     except:
         processed_data = "This game does not exist!"
 
