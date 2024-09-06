@@ -44,14 +44,14 @@
   </head>
   <body>
     <nav class="navbar">
-      <h1 class="navbar-title">TierList Maker</h1>
+      <form id="inputForm" class="input-form">
+        <label for="input_data">Search for game:</label>
+        <input type="text" id="input_data" name="input_data" required>
+        <button type="submit">Submit</button>
+        <p id="response"></p>
+      </form>
       <div class="navbar-buttons left-align">
-        <form id="inputForm" class="input-form">
-          <label for="input_data">Enter some data:</label>
-          <input type="text" id="input_data" name="input_data" required>
-          <button type="submit">Submit</button>
-          <p id="response"></p>
-        </form>
+        <h1 class="navbar-title">TierList Maker</h1>
       </div>
       <div class="navbar-buttons right-align">
         <button id="saveAsPngButton">Render to PNG</button>
