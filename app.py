@@ -41,7 +41,7 @@ headers = {
 def search_games(query):
     url = 'https://api.igdb.com/v4/games'
     # Define your query
-    body = f'search "{query}"; fields name, genres.name;'
+    body = f'search "{query}"; fields name;'
     
     response_igdb2 = requests.post(url, headers=headers, data=body)
     response_igdb2.raise_for_status()
@@ -72,14 +72,17 @@ def submit():
     processed_data = f"Received input: {user_input}"
     boxarts = []
     game_igdb = search_games(user_input)
-    igdb_name = game_igdb[0]['name']
-    game_id = game_igdb[0]['id']
-    game_covers = get_game_covers([game_id])
-    cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x')
-    cover_url = cover_url[2:]
-    cover_url = "https://" + cover_url
-    print(cover_url)
-    boxarts.append([cover_url, igdb_name])
+    print(game_igdb)
+    for x in game_igdb:
+        igdb_name = x['name']
+        game_id = x['id']
+        game_covers = get_game_covers([game_id])
+        cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x')
+        cover_url = cover_url[2:]
+        cover_url = "https://" + cover_url
+        print(cover_url)
+        boxarts.append([cover_url, igdb_name])
+
     try:
     #print(user_input)
         game = sgdb.search_game(user_input)
