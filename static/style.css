@@ -138,7 +138,7 @@ button {
 @media (min-width: 768px) {
   .controls {
     grid-template-columns: repeat(2, 1fr);
-    width: 64px;
+    width: 72px;
   }
 
   .controls .settings {

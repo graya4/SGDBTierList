@@ -5,7 +5,6 @@ from flask_cors import CORS
 from io import BytesIO
 from igdb.wrapper import IGDBWrapper
 
-
 #https://github.com/ZebcoWeb/python-steamgriddb
 
 #TO DO LIST
@@ -22,43 +21,38 @@ sgdb = SteamGridDB(API_KEY)
 app = Flask(__name__)
 CORS(app)
 
-url = "https://id.twitch.tv/oauth2/token"
+# Function to get OAuth token for IGDB
+def get_igdb_access_token():
+    url = "https://id.twitch.tv/oauth2/token"
+    payload = {
+        "client_id": CLIENT_ID,
+        "client_secret": SECRET,
+        "grant_type": "client_credentials"
+    }
+    response = requests.post(url, data=payload)
+    response.raise_for_status()
+    return response.json()["access_token"]
 
-payload = {
-    "client_id": CLIENT_ID,        # Replace with your client ID
-    "client_secret": SECRET,  # Replace with your client secret
-    "grant_type": "client_credentials",   # Common grant type for access tokens
-}
-
-response_igdb = requests.post(url, data=payload)
-ACCESS_TOKEN = response_igdb.json()["access_token"]
+ACCESS_TOKEN = get_igdb_access_token()
 
 headers = {
     'Client-ID': CLIENT_ID,
     'Authorization': f'Bearer {ACCESS_TOKEN}'
 }
 
-def search_games(query):
+def search_games(query, limit=10):
     url = 'https://api.igdb.com/v4/games'
-    # Define your query
-    body = f'search "{query}"; fields name;'
-    
-    response_igdb2 = requests.post(url, headers=headers, data=body)
-    response_igdb2.raise_for_status()
-    return response_igdb2.json()
+    body = f'search "{query}"; fields name; limit {limit};'  # Use limit for pagination
+    response = requests.post(url, headers=headers, data=body)
+    response.raise_for_status()
+    return response.json()
 
 def get_game_covers(game_ids):
     url = 'https://api.igdb.com/v4/covers'
-    # Prepare the query to retrieve covers for specific game IDs
-    body = f'fields game, image_id, url, game_localization; where game = ({",".join(map(str, game_ids))});'
-    
-    response_igdb2 = requests.post(url, headers=headers, data=body)
-    response_igdb2.raise_for_status()
-    return response_igdb2.json()
-
-
-#clientID: oofxapi3vqhkq096jt2p295cteadjf
-#secret: ikbreh2p9boykmva5udlbjool0xc0z
+    body = f'fields game, image_id, url; where game = ({",".join(map(str, game_ids))});'
+    response = requests.post(url, headers=headers, data=body)
+    response.raise_for_status()
+    return response.json()
 
 # Route for serving the HTML file
 @app.route('/')
@@ -68,48 +62,33 @@ def home():
 # Endpoint to handle form submission
 @app.route('/submit', methods=['POST'])
 def submit():
-    user_input = request.form['input_data']  # Retrieve the input data from the form
-    processed_data = f"Received input: {user_input}"
+    user_input = request.form['input_data']
     boxarts = []
     game_igdb = search_games(user_input)
-    #print(game_igdb)
+    
     try:
-    #print(user_input)
         game = sgdb.search_game(user_input)
-        #print(game)
-        
         for x in game:
             current_grids = sgdb.get_grids_by_gameid([x.id])
             game_name = sgdb.get_game_by_gameid(x.id).name 
             for y in current_grids:
-                if y.width == 600 and y.height == 900:
-                    if len(boxarts) < 100:
-                        boxarts.append([y.url, game_name])
+                if y.width == 600 and y.height == 900 and len(boxarts) < 100:
+                    boxarts.append([y.url, game_name])
     except:
-        processed_data = "This game does not exist!"
-    
+        pass
+
     for x in game_igdb:
-        igdb_name = x['name']
-        game_id = x['id']
-        game_covers = get_game_covers([game_id])
         try:
-            cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x')
-            cover_url = cover_url[2:]
-            cover_url = "https://" + cover_url
-            #print(cover_url)
+            igdb_name = x['name']
+            game_id = x['id']
+            game_covers = get_game_covers([game_id])
+            cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x').replace('//', 'https://')
             if len(boxarts) < 100:
                 boxarts.append([cover_url, igdb_name])
-        except:
+        except (IndexError, KeyError):
             continue
 
-
-    
-
-
-    # Return a JSON response
-    processed_data = "There are {} boxart(s) for this search".format(len(boxarts))
-    #print(boxarts)
-    return jsonify({'response': processed_data, 'boxarts' : boxarts})
+    return jsonify({'response': f"There are {len(boxarts)} boxart(s) for this search", 'boxarts': boxarts})
 
 # Proxy route for handling CORS issues
 @app.route('/proxy')

@@ -374,42 +374,46 @@ initColorOptions();
 
 document.addEventListener('DOMContentLoaded', () => {
   const scrollContainer = document.getElementById('scroll-container');
-
-  // Array of image URLs
-  const imageUrls = [
-    // Add your image URLs here
-  ];
-
-  let currentIndex = 0; // Keep track of the current image index
-  const imagesPerPage = 9; // Number of images to load per page
+  const imageUrls = []; // Add your image URLs here
+  let currentIndex = 0;
+  const imagesPerPage = 9;
 
   // Function to load images
   const loadImages = () => {
-    // Determine the number of images to load
+    const fragment = document.createDocumentFragment();
     const endIndex = Math.min(currentIndex + imagesPerPage, imageUrls.length);
-
+    
     for (let i = currentIndex; i < endIndex; i++) {
       const img = document.createElement('img');
       img.src = imageUrls[i];
-      img.className = 'image'; // Add a class for styling, if needed
-      scrollContainer.appendChild(img);
+      img.className = 'image';
+      fragment.appendChild(img);
     }
 
-    currentIndex = endIndex; // Update the current index
+    scrollContainer.appendChild(fragment);
+    currentIndex = endIndex;
   };
+
+  // Debounce function to limit the rate of function execution
+  const debounce = (func, delay) => {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => func.apply(this, args), delay);
+    };
+  };
+
+  // Optimized scroll event listener with debouncing
+  scrollContainer.addEventListener('scroll', debounce(() => {
+    if (scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 100) {
+      if (currentIndex < imageUrls.length) {
+        loadImages();
+      }
+    }
+  }, 200));
 
   // Initial load of images
   loadImages();
-
-  // Scroll event listener
-  scrollContainer.addEventListener('scroll', () => {
-    // Check if the user is near the bottom of the container
-    if (scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 100) {
-      if (currentIndex < imageUrls.length) {
-        loadImages(); // Load the next batch of images
-      }
-    }
-  });
 });
 
 document.querySelector("h1").addEventListener("click", () => {
