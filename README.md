@@ -2,5 +2,4 @@ A pretty basic tier list that uses SteamGridDB and IGDB for the game covers. I d
 
 Once you have your API key, create a text file called API_KEY in the root folder and paste it in there.
 
-
-Working on a hosting solution but LMFAO imagine paying money for hosting.
+Website: https://scuffedtierlist.akeyl.org/
