@@ -301,12 +301,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   }).catch((error) => {
     console.error('Failed to capture and save as PNG:', error);
   });
-});
-
-
-    
-    
-    
+}); 
   
   
 
@@ -377,7 +372,45 @@ initDraggables();
 initDefaultTierList();
 initColorOptions();
 
-//* event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  const scrollContainer = document.getElementById('scroll-container');
+
+  // Array of image URLs
+  const imageUrls = [
+    // Add your image URLs here
+  ];
+
+  let currentIndex = 0; // Keep track of the current image index
+  const imagesPerPage = 9; // Number of images to load per page
+
+  // Function to load images
+  const loadImages = () => {
+    // Determine the number of images to load
+    const endIndex = Math.min(currentIndex + imagesPerPage, imageUrls.length);
+
+    for (let i = currentIndex; i < endIndex; i++) {
+      const img = document.createElement('img');
+      img.src = imageUrls[i];
+      img.className = 'image'; // Add a class for styling, if needed
+      scrollContainer.appendChild(img);
+    }
+
+    currentIndex = endIndex; // Update the current index
+  };
+
+  // Initial load of images
+  loadImages();
+
+  // Scroll event listener
+  scrollContainer.addEventListener('scroll', () => {
+    // Check if the user is near the bottom of the container
+    if (scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 100) {
+      if (currentIndex < imageUrls.length) {
+        loadImages(); // Load the next batch of images
+      }
+    }
+  });
+});
 
 document.querySelector("h1").addEventListener("click", () => {
   tiersContainer.appendChild(createTier());
