@@ -251,7 +251,7 @@ function loadTierList(event) {
       document.body.appendChild(tempContainer);
   
       // Wait for images to load before capturing
-      html2canvas(tempContainer, { useCORS: true }).then((canvas) => {
+      html2canvas(tempContainer, { useCORS: true, scale: 3 }).then((canvas) => {
           // Convert the canvas to a PNG data URL
           const dataURL = canvas.toDataURL('image/png');
   

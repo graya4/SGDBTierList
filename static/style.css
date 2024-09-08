@@ -49,6 +49,7 @@ img {
   aspect-ratio: .67;
   height: auto;
   margin-right: 10px;
+  image-rendering: auto;
 }
 
 img.dragging {

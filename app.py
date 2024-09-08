@@ -72,17 +72,7 @@ def submit():
     processed_data = f"Received input: {user_input}"
     boxarts = []
     game_igdb = search_games(user_input)
-    print(game_igdb)
-    for x in game_igdb:
-        igdb_name = x['name']
-        game_id = x['id']
-        game_covers = get_game_covers([game_id])
-        cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x')
-        cover_url = cover_url[2:]
-        cover_url = "https://" + cover_url
-        print(cover_url)
-        boxarts.append([cover_url, igdb_name])
-
+    #print(game_igdb)
     try:
     #print(user_input)
         game = sgdb.search_game(user_input)
@@ -93,12 +83,28 @@ def submit():
             game_name = sgdb.get_game_by_gameid(x.id).name 
             for y in current_grids:
                 if y.width == 600 and y.height == 900:
-                    boxarts.append([y.url, game_name])
+                    if len(boxarts) < 100:
+                        boxarts.append([y.url, game_name])
+    except:
+        processed_data = "This game does not exist!"
+    
+    for x in game_igdb:
+        igdb_name = x['name']
+        game_id = x['id']
+        game_covers = get_game_covers([game_id])
+        try:
+            cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x')
+            cover_url = cover_url[2:]
+            cover_url = "https://" + cover_url
+            #print(cover_url)
+            if len(boxarts) < 100:
+                boxarts.append([cover_url, igdb_name])
+        except:
+            continue
 
 
     
-    except:
-        processed_data = "This game does not exist!"
+
 
     # Return a JSON response
     processed_data = "There are {} boxart(s) for this search".format(len(boxarts))
