@@ -120,7 +120,7 @@ def cache_image_route():
 # Proxy route for handling CORS issues
 # Cache dictionary to store images with their expiration time
 image_cache = {}
-CACHE_EXPIRATION_TIME = 14 * 24 * 60 * 60  # 2 weeks in seconds
+CACHE_EXPIRATION_TIME = 15 * 24 * 60 * 60  # 15 days in seconds
 
 @app.route('/proxy')
 def proxy():
