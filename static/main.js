@@ -136,86 +136,95 @@ function updateAltTextColorAndOrder() {
   });
 }
 
-      // Function to extract the current state of the tier list and save it to a JSON file
+// Function to extract the current state of the tier list and save it to a JSON file
 function saveTierList() {
-        const tierData = [];
+  const tierData = [];
 
-        // Iterate over each tier to collect data
-        const tiers = document.querySelectorAll('.tier');
-        tiers.forEach(tier => {
-            const tierName = tier.querySelector('.label span').textContent;
-            const images = tier.querySelectorAll('.items img');
-            const imageData = Array.from(images).map(img => ({
-                src: img.src,
-                alt: img.alt
-            }));
+  // Iterate over each tier to collect data
+  const tiers = document.querySelectorAll('.tier');
+  tiers.forEach(tier => {
+      const tierName = tier.querySelector('.label span').textContent;
+      const tierColor = getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color');
+      const images = tier.querySelectorAll('.items img');
+      const imageData = Array.from(images).map(img => ({
+          src: img.src,
+          alt: img.alt
+      }));
 
-            tierData.push({ tier: tierName, images: imageData });
-        });
+      tierData.push({ 
+          tier: tierName, 
+          color: tierColor, // Include color information
+          images: imageData 
+      });
+  });
 
-        // Create a JSON string from the collected data
-        const jsonString = JSON.stringify(tierData);
+  // Create a JSON string from the collected data
+  const jsonString = JSON.stringify(tierData);
 
-        // Create a downloadable file
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'tier_list.json';
-        link.click();
+  // Create a downloadable file
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'tier_list.json';
+  link.click();
 }
 
-    // Function to load a tier list from a JSON file
 function loadTierList(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+  const file = event.target.files[0];
+  if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const jsonString = e.target.result;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+      const jsonString = e.target.result;
 
-        try {
-            const tierData = JSON.parse(jsonString);
+      try {
+          const tierData = JSON.parse(jsonString);
 
-            // Check if the loaded data is valid
-            if (!Array.isArray(tierData) || tierData.length === 0) {
-                alert('The tier list is empty or the file format is invalid.');
-                return;
-            }
+          // Check if the loaded data is valid
+          if (!Array.isArray(tierData) || tierData.length === 0) {
+              alert('The tier list is empty or the file format is invalid.');
+              return;
+          }
 
-            // Clear existing tiers only if they are present
-            if (tiersContainer.children.length > 0) {
-                tiersContainer.innerHTML = '';
-            }
+          // Clear existing tiers only if they are present
+          if (tiersContainer.children.length > 0) {
+              tiersContainer.innerHTML = '';
+          }
 
-            // Recreate tiers and their images based on the loaded data
-            tierData.forEach(data => {
-                const tier = createTier(data.tier);
-                const itemsContainer = tier.querySelector('.items');
+          // Recreate tiers and their images based on the loaded data
+          tierData.forEach(data => {
+              const tier = createTier(data.tier);
+              const itemsContainer = tier.querySelector('.items');
 
-                data.images.forEach(imageData => {
-                    const imgElement = document.createElement('img');
-                    imgElement.src = imageData.src;
-                    imgElement.alt = imageData.alt;
-                    imgElement.draggable = true;
-                    imgElement.style.margin = '5px';
-                    imgElement.addEventListener('dragstart', handleDragStart);
-                    imgElement.addEventListener('dragend', handleDragEnd);
-                    imgElement.addEventListener('dblclick', handleImageRemove);
-                    itemsContainer.appendChild(imgElement);
-                });
+              // Apply the saved color to the tier
+              const label = tier.querySelector('.label');
+              label.style.setProperty('--color', data.color); // Set the color
 
-                tiersContainer.appendChild(tier);
-            });
+              data.images.forEach(imageData => {
+                  const imgElement = document.createElement('img');
+                  imgElement.src = imageData.src;
+                  imgElement.alt = imageData.alt;
+                  imgElement.draggable = true;
+                  imgElement.style.margin = '5px';
+                  imgElement.addEventListener('dragstart', handleDragStart);
+                  imgElement.addEventListener('dragend', handleDragEnd);
+                  imgElement.addEventListener('dblclick', handleImageRemove);
+                  itemsContainer.appendChild(imgElement);
+              });
 
-            updateAltTextColorAndOrder();
-        } catch (error) {
-            alert('Failed to load the tier list. The file might be corrupted or in an invalid format.');
-            console.error('Error parsing JSON:', error);
-        }
-    };
+              tiersContainer.appendChild(tier);
+          });
 
-    reader.readAsText(file);
+          updateAltTextColorAndOrder();
+      } catch (error) {
+          alert('Failed to load the tier list. The file might be corrupted or in an invalid format.');
+          console.error('Error parsing JSON:', error);
+      }
+  };
+
+  reader.readAsText(file);
 }
+
 
 // Event listeners for the Save and Load buttons
 document.getElementById('saveButton').addEventListener('click', saveTierList);

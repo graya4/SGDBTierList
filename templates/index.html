@@ -11,31 +11,53 @@
     />
     <link rel="stylesheet" href="../static/style.css" />
     <style>
-      .main {
-        display: flex; /* Enable Flexbox for the main container */
-        gap: 20px; /* Optional: add space between the elements */
+      html, body {
+        height: 100%;
+        margin: 0;
       }
 
-      .tiers.container {
-        flex: 2.5; /* Each div will take up equal space */
-        border: 0px solid #000000; /* Optional: add border for visibility */
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .navbar {
+        background-color: #333;
+        color: #fff;
         padding: 10px;
-        box-sizing: border-box; /* Ensures padding is included in width */
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .main {
+        display: flex;
+        gap: 20px; /* Optional: add space between the elements */
+        flex: 1; /* Allows .main to take up the remaining space */
+        align-items: flex-start; /* Ensures items are aligned at the top */
       }
 
       .scroll-container {
-        flex: 0.85; /* Each div will take up equal space */
+        flex: 0.85; /* Flex-grow ratio */
         border: 0px solid;
         background-color: #262626;
         scrollbar-color: #000000;
         padding: 10px;
         box-sizing: border-box; /* Ensures padding is included in width */
+        height: calc(100vh - 60px); /* Adjusted height considering navbar */
+        overflow-y: auto; /* Allows vertical scrolling */
+      }
+
+      .tiers.container {
+        flex: 2.5; /* Flex-grow ratio */
+        border: 0px solid #000000; /* Optional: add border for visibility */
+        padding: 10px;
+        box-sizing: border-box; /* Ensures padding is included in width */
       }
 
       .game-title-container {
-        flex: 1; /* Each div will take up equal space */
+        flex: 1; /* Flex-grow ratio */
         padding: 10px;
-        
         box-sizing: border-box; /* Ensures padding is included in width */
       }
 

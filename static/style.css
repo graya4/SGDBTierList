@@ -62,11 +62,6 @@ button {
   transition: 0.5s;
 }
 
-.container {
-  width: min(1000px, 80%);
-  margin: auto;
-  border: 2px solid var(--border-color);
-}
 
 .tiers:empty::before {
   content: "Click on the title to add a new tier.";
@@ -252,8 +247,12 @@ button {
 }
 
 .navbar-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   margin: 0;
   color: white;
+  text-align: center;
 }
 
 .navbar-buttons {
