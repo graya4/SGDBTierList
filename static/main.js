@@ -174,7 +174,7 @@ function loadTierList(event) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
       const jsonString = e.target.result;
 
       try {
@@ -192,13 +192,14 @@ function loadTierList(event) {
           }
 
           // Recreate tiers and their images based on the loaded data
-          tierData.forEach(data => {
+          tierData.forEach((data, index) => {
               const tier = createTier(data.tier);
               const itemsContainer = tier.querySelector('.items');
 
-              // Apply the saved color to the tier
+              // Check if the color information exists; if not, use a default or calculated color
+              const tierColor = data.color || colors[index % colors.length]; // Use provided color or fallback to a default
               const label = tier.querySelector('.label');
-              label.style.setProperty('--color', data.color); // Set the color
+              label.style.setProperty('--color', tierColor);
 
               data.images.forEach(imageData => {
                   const imgElement = document.createElement('img');
@@ -224,6 +225,7 @@ function loadTierList(event) {
 
   reader.readAsText(file);
 }
+
 
 
 // Event listeners for the Save and Load buttons
