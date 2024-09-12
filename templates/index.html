@@ -114,7 +114,7 @@
     
     <script>
 document.getElementById('inputForm').addEventListener('submit', function(event) {
-    event.preventDefault();
+    event.preventDefault(); // Prevent the default form submission
 
     const formData = new FormData(this);
 
@@ -131,7 +131,6 @@ document.getElementById('inputForm').addEventListener('submit', function(event) 
 
         if (data.boxarts) {
             data.boxarts.forEach(([url, title]) => {
-                // Use the proxy to fetch the images
                 const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
                 const imgElement = document.createElement('img');
                 imgElement.src = proxyUrl;
@@ -140,12 +139,19 @@ document.getElementById('inputForm').addEventListener('submit', function(event) 
                 imgElement.style.margin = '5px';
                 imgElement.addEventListener('dragstart', handleDragStart);
                 imgElement.addEventListener('dragend', handleDragEnd);
-                imgElement.addEventListener('dblclick', handleImageRemove); // Add double-click event
+                imgElement.addEventListener('dblclick', handleImageRemove);
                 imageContainer.appendChild(imgElement);
             });
         }
     })
     .catch(error => console.error('Error:', error));
+});
+
+document.getElementById('input_data').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault(); // Prevent the default behavior
+        document.getElementById('inputForm').dispatchEvent(new Event('submit')); // Trigger the submit event
+    }
 });
 
 function handleDragStart(event) {

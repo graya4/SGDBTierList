@@ -91,7 +91,7 @@ def submit():
         except (IndexError, KeyError):
             continue
 
-    return jsonify({'response': f"There are {len(boxarts)} boxart(s) for this search", 'boxarts': boxarts})
+    return jsonify({'response': f"{len(boxarts)} boxart(s) found.", 'boxarts': boxarts})
 
 # Proxy route for handling CORS issues
 @app.route('/proxy')
