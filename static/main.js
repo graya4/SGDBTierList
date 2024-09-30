@@ -124,15 +124,22 @@ function updateAltTextColorAndOrder() {
       const tierColor = window.getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color');
       const images = tier.querySelectorAll('.items img');
       
-      images.forEach(image => {
-          const altText = image.alt;
-          const titleElement = document.createElement('p');
-          titleElement.textContent = altText;
-          titleElement.style.color = tierColor;
-          titleElement.contentEditable = true; // Make the text editable
-          titleElement.addEventListener('blur', () => handleTextEdit(titleElement, image)); // Add blur event to handle editing
-          gameTitleContainer.appendChild(titleElement);
-      });
+      if (images.length > 0) {
+          // Add game titles for this tier
+          images.forEach(image => {
+              const altText = image.alt;
+              const titleElement = document.createElement('p');
+              titleElement.textContent = altText;
+              titleElement.style.color = tierColor;
+              titleElement.contentEditable = true; // Make the text editable
+              titleElement.addEventListener('blur', () => handleTextEdit(titleElement, image)); // Add blur event to handle editing
+              gameTitleContainer.appendChild(titleElement);
+          });
+
+          // Add a space between tiers
+          const spacer = document.createElement('br');
+          gameTitleContainer.appendChild(spacer);
+      }
   });
 }
 
@@ -236,12 +243,17 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   // Select the main elements you want to capture
   const tierListElement = document.querySelector('.tiers.container');
   const gameTitleContainer = document.querySelector('.game-title-container');
+  const scrollContainer = document.getElementById('scroll-container');
 
   // Hide elements you want to exclude from the rendering
   const settingsModal = document.querySelector('.settings-modal');
   const controls = document.querySelector('.controls');
   settingsModal.style.display = 'none';
   controls.style.display = 'none';
+
+  // Hide the scroll container and expand the tiers container
+  scrollContainer.style.display = 'none'; // Hide the scroll container
+  tierListElement.style.width = '100%';   // Expand the tiers container to fill the space
 
   // Hide all buttons
   const buttons = document.querySelectorAll('button');
@@ -285,7 +297,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   // Wait for images to load before capturing
   html2canvas(tempContainer, { 
     useCORS: true, 
-    scale: 2.5 // Adjust scale as needed (2 for 2x, 3 for 3x, etc.)
+    scale: 2 // Adjust scale as needed (2 for 2x, 3 for 3x, etc.)
   }).then((canvas) => {
     // Convert the canvas to a PNG data URL
     const dataURL = canvas.toDataURL('image/png');
@@ -298,8 +310,10 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
 
     // Clean up: remove the temporary container and restore visibility of excluded elements
     document.body.removeChild(tempContainer);
-    settingsModal.style.display = ''; // Restore the settings modal visibility
-    controls.style.display = ''; // Restore the controls visibility
+    scrollContainer.style.display = '';  // Restore the scroll container visibility
+    tierListElement.style.width = '';    // Restore the tiers container width
+    settingsModal.style.display = '';    // Restore the settings modal visibility
+    controls.style.display = '';         // Restore the controls visibility
     buttons.forEach(button => {
       button.style.display = ''; // Restore visibility of all buttons
     });
@@ -312,7 +326,8 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   }).catch((error) => {
     console.error('Failed to capture and save as PNG:', error);
   });
-}); 
+});
+
   
   
 
