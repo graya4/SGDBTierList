@@ -1,8 +1,9 @@
-from steamgrid import SteamGridDB, StyleType, PlatformType, MimeType, ImageType
+from steamgrid import SteamGridDB
 import requests
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 from io import BytesIO
+from steam_web_api import Steam
 
 
 #https://github.com/ZebcoWeb/python-steamgriddb
@@ -16,9 +17,11 @@ api_file = open('API_KEY.txt')
 API_KEY = api_file.readline().strip()
 CLIENT_ID = api_file.readline().strip()
 SECRET = api_file.readline().strip()
+STEAM_KEY = api_file.readline().strip()
 
 sgdb = SteamGridDB(API_KEY)
 app = Flask(__name__)
+steam = Steam(STEAM_KEY)
 CORS(app)
 
 
@@ -68,11 +71,23 @@ def submit():
     user_input = request.form['input_data']
     boxarts = []
     game_igdb = search_games(user_input)
-    
+    try:
+        user = steam.apps.search_games(user_input)
+        found_games = user['apps']
+        for x in found_games:
+            gameid = x['id'][0]
+            artlink = "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/library_600x900_2x.jpg".format(gameid)
+            #print(steam.apps.get_app_details(gameid)[str(gameid)]['data']['type'])
+            if steam.apps.get_app_details(gameid)[str(gameid)]['data']['type'] == "game":
+                #print(artlink)
+                boxarts.append([artlink, x['name']])
+    except:
+        pass
     try:
         game = sgdb.search_game(user_input)
         for x in game:
             current_grids = sgdb.get_grids_by_gameid([x.id])
+            #print(current_grids)
             game_name = sgdb.get_game_by_gameid(x.id).name 
             for y in current_grids:
                 if y.width == 600 and y.height == 900 and len(boxarts) < 100:
