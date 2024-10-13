@@ -77,8 +77,8 @@ def submit():
         for x in found_games:
             gameid = x['id'][0]
             artlink = "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/library_600x900_2x.jpg".format(gameid)
-            #print(steam.apps.get_app_details(gameid)[str(gameid)]['data']['type'])
-            if steam.apps.get_app_details(gameid)[str(gameid)]['data']['type'] == "game":
+            #print(steam.apps.get_app_details(gameid)[str(gameid)]['data'])
+            if steam.apps.get_app_details(gameid)[str(gameid)]['data']['type'] == "game" and requests.get(artlink).status_code != 404:
                 #print(artlink)
                 boxarts.append([artlink, x['name']])
     except:
