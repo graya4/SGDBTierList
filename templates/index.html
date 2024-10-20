@@ -71,7 +71,7 @@
   <body>
     <nav class="navbar">
       <form id="inputForm" class="input-form">
-        <label for="input_data">Search for game:</label>
+        <label for="input_data">Search for Game:</label>
         <input type="text" id="input_data" name="input_data" required>
         <button type="submit">Submit</button>
         <p id="response"></p>
@@ -80,6 +80,12 @@
         <h1 class="navbar-title">Scuffed TierList Maker</h1>
       </div>
       <div class="navbar-buttons right-align">
+        <label for="quality">Quality:</label>
+        <select name="quality" id="quality">
+          <option value="2">Low</option>
+          <option value="3">Medium</option>
+          <option value="4">High</option>
+        </select>
         <button id="saveAsPngButton">Render to PNG</button>
         <button id="saveButton" >Save Tier List</button>
         <!-- Load button styled as a button -->

@@ -5,14 +5,6 @@ from flask_cors import CORS
 from io import BytesIO
 from steam_web_api import Steam
 
-
-#https://github.com/ZebcoWeb/python-steamgriddb
-
-#TO DO LIST
-#figure out some fucking way to get official steam covers working
-##On my phone so can't go into detail but basically you need to log into steam as an anonymous user then query the Steam PICS API and grab appinfo via GetProductInfo()
-##There seems to be a working example here using a port of SteamKit2 to python: https://github.com/ValvePython/steam/blob/master/recipes%2F2.SimpleWebAPI%2Frun_webapi.py
-
 api_file = open('API_KEY.txt')
 API_KEY = api_file.readline().strip()
 CLIENT_ID = api_file.readline().strip()

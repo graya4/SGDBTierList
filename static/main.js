@@ -294,10 +294,11 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   // Append the temporary container to the body (hidden from view)
   document.body.appendChild(tempContainer);
 
+  const scale = parseFloat(document.getElementById("quality").value);
   // Wait for images to load before capturing
   html2canvas(tempContainer, { 
     useCORS: true, 
-    scale: 2 // Adjust scale as needed (2 for 2x, 3 for 3x, etc.)
+    scale: scale // Adjust scale as needed (2 for 2x, 3 for 3x, etc.)
   }).then((canvas) => {
     // Convert the canvas to a PNG data URL
     const dataURL = canvas.toDataURL('image/png');
