@@ -11,7 +11,6 @@ CLIENT_ID = api_file.readline().strip()
 SECRET = api_file.readline().strip()
 STEAM_KEY = api_file.readline().strip()
 
-sgdb = SteamGridDB(API_KEY)
 app = Flask(__name__)
 steam = Steam(STEAM_KEY)
 CORS(app)
@@ -38,19 +37,43 @@ headers = {
     'Authorization': f'Bearer {ACCESS_TOKEN}'
 }
 
-def search_games(query, limit=10):
+headers_sgdb = {
+    'Authorization': f'Bearer {API_KEY}'
+}
+
+#IGDB API CALLS
+
+def search_game_igdb(query, limit=10):
     url = 'https://api.igdb.com/v4/games'
     body = f'search "{query}"; fields name; limit {limit};'  # Use limit for pagination
     response = requests.post(url, headers=headers, data=body)
     response.raise_for_status()
     return response.json()
 
-def get_game_covers(game_ids):
+def get_game_covers(game_ids, limit=100):
     url = 'https://api.igdb.com/v4/covers'
     body = f'fields game, image_id, url; where game = ({",".join(map(str, game_ids))});'
     response = requests.post(url, headers=headers, data=body)
     response.raise_for_status()
     return response.json()
+
+#SGDB API CALLS
+
+def search_game_sgdb(query):
+    search_url = f'https://www.steamgriddb.com/api/v2/search/autocomplete/{query}'
+    response = requests.get(search_url, headers=headers_sgdb)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return f"Error: {response.status_code}"
+
+def get_game_grids_sgdb(game_id):
+    grids_url = f'https://www.steamgriddb.com/api/v2/grids/game/{game_id}'
+    response = requests.get(grids_url, headers=headers_sgdb)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return f"Error: {response.status_code}"
 
 # Route for serving the HTML file
 @app.route('/')
@@ -62,7 +85,9 @@ def home():
 def submit():
     user_input = request.form['input_data']
     boxarts = []
-    game_igdb = search_games(user_input)
+    game_igdb = search_game_igdb(user_input)
+    
+    #Official Steam Cover Search
     try:
         user = steam.apps.search_games(user_input)
         found_games = user['apps']
@@ -75,18 +100,20 @@ def submit():
                 boxarts.append([artlink, x['name']])
     except:
         pass
+    
+    #SGDB Search
+    game = search_game_sgdb(user_input)['data']
     try:
-        game = sgdb.search_game(user_input)
         for x in game:
-            current_grids = sgdb.get_grids_by_gameid([x.id])
-            #print(current_grids)
-            game_name = sgdb.get_game_by_gameid(x.id).name 
+            current_grids = get_game_grids_sgdb(x['id'])['data']
+            game_name = x['name']
             for y in current_grids:
-                if y.width == 600 and y.height == 900 and len(boxarts) < 100:
-                    boxarts.append([y.url, game_name])
+                if y['width'] == 600 and y['height'] == 900 and len(boxarts) < 100:
+                    boxarts.append([y['url'], game_name])
     except:
         pass
-
+    
+    #IGDB Search
     for x in game_igdb:
         try:
             igdb_name = x['name']
