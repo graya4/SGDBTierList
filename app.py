@@ -1,4 +1,3 @@
-from steamgrid import SteamGridDB
 import requests
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
@@ -43,14 +42,14 @@ headers_sgdb = {
 
 #IGDB API CALLS
 
-def search_game_igdb(query, limit=10):
+def search_game_igdb(query, limit=20):
     url = 'https://api.igdb.com/v4/games'
     body = f'search "{query}"; fields name; limit {limit};'  # Use limit for pagination
     response = requests.post(url, headers=headers, data=body)
     response.raise_for_status()
     return response.json()
 
-def get_game_covers(game_ids, limit=100):
+def get_game_covers(game_ids):
     url = 'https://api.igdb.com/v4/covers'
     body = f'fields game, image_id, url; where game = ({",".join(map(str, game_ids))});'
     response = requests.post(url, headers=headers, data=body)
@@ -107,6 +106,7 @@ def submit():
         for x in game:
             current_grids = get_game_grids_sgdb(x['id'])['data']
             game_name = x['name']
+            #print(game_name)
             for y in current_grids:
                 if y['width'] == 600 and y['height'] == 900 and len(boxarts) < 100:
                     boxarts.append([y['url'], game_name])
@@ -120,7 +120,7 @@ def submit():
             game_id = x['id']
             game_covers = get_game_covers([game_id])
             cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x').replace('//', 'https://')
-            if len(boxarts) < 100:
+            if len(boxarts) < 50:
                 boxarts.append([cover_url, igdb_name])
         except (IndexError, KeyError):
             continue

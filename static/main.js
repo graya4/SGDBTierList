@@ -240,94 +240,102 @@ document.getElementById('saveButton').addEventListener('click', saveTierList);
 document.getElementById('loadButton').addEventListener('change', loadTierList);
 
 document.getElementById('saveAsPngButton').addEventListener('click', () => {
-  // Select the main elements you want to capture
   const tierListElement = document.querySelector('.tiers.container');
   const gameTitleContainer = document.querySelector('.game-title-container');
   const scrollContainer = document.getElementById('scroll-container');
 
-  // Hide elements you want to exclude from the rendering
+  // Hide irrelevant UI
   const settingsModal = document.querySelector('.settings-modal');
   const controls = document.querySelector('.controls');
   settingsModal.style.display = 'none';
   controls.style.display = 'none';
+  scrollContainer.style.display = 'none';
 
-  // Hide the scroll container and expand the tiers container
-  scrollContainer.style.display = 'none'; // Hide the scroll container
-  tierListElement.style.width = '100%';   // Expand the tiers container to fill the space
-
-  // Hide all buttons
   const buttons = document.querySelectorAll('button');
-  buttons.forEach(button => {
-    button.style.display = 'none'; // Hide each button
-  });
+  buttons.forEach(button => button.style.display = 'none');
 
-  // Select all tiers
   const tiers = document.querySelectorAll('.tier');
-
-  // Iterate over each tier to find and hide elements you want to exclude
   tiers.forEach(tier => {
-    const excludeItems = tier.querySelectorAll('.exclude-item'); // Select all items to exclude within each tier
-    excludeItems.forEach(item => {
-      item.style.display = 'none'; // Hide each item to exclude
-    });
+    const excludeItems = tier.querySelectorAll('.exclude-item');
+    excludeItems.forEach(item => item.style.display = 'none');
   });
 
-  // Create a temporary container to hold both elements
-  const tempContainer = document.createElement('div');
-  tempContainer.style.display = 'flex';
-  tempContainer.style.flexDirection = 'row'; // Position elements side by side
-  tempContainer.style.position = 'absolute'; // Position off-screen to avoid disrupting layout
-  tempContainer.style.top = '-9999px';
-  tempContainer.style.left = '-9999px';
-  tempContainer.style.width = `${tierListElement.offsetWidth + gameTitleContainer.offsetWidth}px`;
-  tempContainer.style.height = `${Math.max(tierListElement.offsetHeight, gameTitleContainer.offsetHeight)}px`;
-  tempContainer.style.backgroundColor = '#1A1A17'; // Set the background color as desired
-
-  // Clone elements to ensure current state is captured
+  // Clone elements for rendering
   const tierListClone = tierListElement.cloneNode(true);
   const gameTitleClone = gameTitleContainer.cloneNode(true);
 
-  // Append clones to the temporary container
+  // --- Measure widest content ---
+  const measureMaxWidth = (container) => {
+    const temp = container.cloneNode(true);
+    temp.style.position = 'absolute';
+    temp.style.visibility = 'hidden';
+    temp.style.width = 'fit-content';
+    temp.style.whiteSpace = 'nowrap';
+    document.body.appendChild(temp);
+    const width = temp.offsetWidth;
+    document.body.removeChild(temp);
+    return width;
+  };
+
+  const tierWidth = measureMaxWidth(tierListElement);
+  const titleWidth = measureMaxWidth(gameTitleContainer);
+
+  // Apply measured widths to clones
+  tierListClone.style.width = `${tierWidth}px`;
+  gameTitleClone.style.width = `${titleWidth}px`;
+
+  // Create container for rendering
+  const tempContainer = document.createElement('div');
+  tempContainer.style.display = 'flex';
+  tempContainer.style.flexDirection = 'row';
+  tempContainer.style.position = 'absolute';
+  tempContainer.style.top = '-9999px';
+  tempContainer.style.overflow = 'hidden';
+  tempContainer.style.left = '-9999px';
+  tempContainer.style.backgroundColor = '#1A1A17';
+  tempContainer.style.width = `${tierWidth + titleWidth}px`;
+  tempContainer.style.height = 'auto';
+
   tempContainer.appendChild(tierListClone);
   tempContainer.appendChild(gameTitleClone);
-
-  // Append the temporary container to the body (hidden from view)
   document.body.appendChild(tempContainer);
 
   const scale = parseFloat(document.getElementById("quality").value);
-  // Wait for images to load before capturing
-  html2canvas(tempContainer, { 
-    useCORS: true, 
-    scale: scale // Adjust scale as needed (2 for 2x, 3 for 3x, etc.)
-  }).then((canvas) => {
-    // Convert the canvas to a PNG data URL
-    const dataURL = canvas.toDataURL('image/png');
+html2canvas(tempContainer, {
+  useCORS: true,
+  scale: scale
+}).then((canvas) => {
+  // Trim 2px off the bottom to remove the white line
+  const trimmedCanvas = document.createElement('canvas');
+  const ctx = trimmedCanvas.getContext('2d');
+  trimmedCanvas.width = canvas.width;
+  trimmedCanvas.height = canvas.height - 2; // remove bottom 2px
 
-    // Create a download link for the PNG
-    const link = document.createElement('a');
-    link.href = dataURL;
-    link.download = 'tier_list.png';
-    link.click();
+  ctx.drawImage(canvas, 0, 0);
 
-    // Clean up: remove the temporary container and restore visibility of excluded elements
-    document.body.removeChild(tempContainer);
-    scrollContainer.style.display = '';  // Restore the scroll container visibility
-    tierListElement.style.width = '';    // Restore the tiers container width
-    settingsModal.style.display = '';    // Restore the settings modal visibility
-    controls.style.display = '';         // Restore the controls visibility
-    buttons.forEach(button => {
-      button.style.display = ''; // Restore visibility of all buttons
-    });
-    tiers.forEach(tier => {
-      const excludeItems = tier.querySelectorAll('.exclude-item'); // Restore visibility for each excluded item within each tier
-      excludeItems.forEach(item => {
-        item.style.display = ''; // Restore visibility for each excluded item
-      });
-    });
-  }).catch((error) => {
-    console.error('Failed to capture and save as PNG:', error);
+  const dataURL = trimmedCanvas.toDataURL('image/png');
+  const link = document.createElement('a');
+  link.href = dataURL;
+  link.download = 'tier_list.png';
+  link.click();
+
+  // Clean up
+  document.body.removeChild(tempContainer);
+  scrollContainer.style.display = '';
+  tierListElement.style.width = '';
+  settingsModal.style.display = '';
+  controls.style.display = '';
+  buttons.forEach(button => button.style.display = '');
+  tiers.forEach(tier => {
+    const excludeItems = tier.querySelectorAll('.exclude-item');
+    excludeItems.forEach(item => item.style.display = '');
   });
+}).catch((error) => {
+  console.error('Failed to capture and save as PNG:', error);
 });
+
+});
+
 
   
   
