@@ -244,7 +244,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   const gameTitleContainer = document.querySelector('.game-title-container');
   const scrollContainer = document.getElementById('scroll-container');
 
-  // Hide irrelevant UI
+  // Hide UI elements
   const settingsModal = document.querySelector('.settings-modal');
   const controls = document.querySelector('.controls');
   settingsModal.style.display = 'none';
@@ -260,11 +260,10 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     excludeItems.forEach(item => item.style.display = 'none');
   });
 
-  // Clone elements for rendering
+  // Clone the tier list
   const tierListClone = tierListElement.cloneNode(true);
-  const gameTitleClone = gameTitleContainer.cloneNode(true);
 
-  // --- Measure widest content ---
+  // Measure tier width
   const measureMaxWidth = (container) => {
     const temp = container.cloneNode(true);
     temp.style.position = 'absolute';
@@ -276,65 +275,112 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     document.body.removeChild(temp);
     return width;
   };
-
   const tierWidth = measureMaxWidth(tierListElement);
-  const titleWidth = measureMaxWidth(gameTitleContainer);
-
-  // Apply measured widths to clones
   tierListClone.style.width = `${tierWidth}px`;
-  gameTitleClone.style.width = `${titleWidth}px`;
 
-  // Create container for rendering
+  // Clone and reflow game title list into columns
+  const titleTextNodes = Array.from(gameTitleContainer.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+  const tempColumnWrapper = document.createElement('div');
+  tempColumnWrapper.style.position = 'absolute';
+  tempColumnWrapper.style.visibility = 'hidden';
+  tempColumnWrapper.style.width = '400px';
+  tempColumnWrapper.style.font = window.getComputedStyle(gameTitleContainer).font;
+  titleTextNodes.forEach(node => {
+    const clone = node.cloneNode(true);
+    tempColumnWrapper.appendChild(clone);
+  });
+  document.body.appendChild(tempColumnWrapper);
+
+  const tierHeight = tierListElement.offsetHeight;
+  const fullTextHeight = tempColumnWrapper.offsetHeight;
+  const columnCount = Math.ceil(fullTextHeight / tierHeight);
+
+  const columnizedTitleContainer = document.createElement('div');
+  columnizedTitleContainer.style.display = 'flex';
+  columnizedTitleContainer.style.flexDirection = 'row';
+  columnizedTitleContainer.style.color = '#D6BA8D';
+  columnizedTitleContainer.style.fontFamily = 'monospace';
+
+  let currentColumn = document.createElement('div');
+  currentColumn.style.padding = '10px'
+  currentColumn.style.display = 'flex';
+  currentColumn.style.flexDirection = 'column';
+  currentColumn.style.marginRight = '40px';
+  currentColumn.style.whiteSpace = 'nowrap';
+  columnizedTitleContainer.appendChild(currentColumn);
+
+  let currentHeight = 0;
+  titleTextNodes.forEach(node => {
+    const clone = node.cloneNode(true);
+    tempColumnWrapper.appendChild(clone);
+    const nodeHeight = clone.offsetHeight;
+    tempColumnWrapper.removeChild(clone);
+
+    if (currentHeight + nodeHeight > tierHeight / 1.40) {
+      currentColumn = document.createElement('div');
+      currentColumn.style.padding = '10px'
+      currentColumn.style.display = 'flex';
+      currentColumn.style.flexDirection = 'column';
+      currentColumn.style.marginRight = '40px';
+      currentColumn.style.whiteSpace = 'nowrap';
+      columnizedTitleContainer.appendChild(currentColumn);
+      currentHeight = 0;
+    }
+
+    currentColumn.appendChild(node.cloneNode(true));
+    currentHeight += nodeHeight;
+  });
+
+  document.body.removeChild(tempColumnWrapper);
+
+  // Set up the container for rendering
   const tempContainer = document.createElement('div');
   tempContainer.style.display = 'flex';
   tempContainer.style.flexDirection = 'row';
   tempContainer.style.position = 'absolute';
   tempContainer.style.top = '-9999px';
-  tempContainer.style.overflow = 'hidden';
   tempContainer.style.left = '-9999px';
   tempContainer.style.backgroundColor = '#1A1A17';
-  tempContainer.style.width = `${tierWidth + titleWidth}px`;
-  tempContainer.style.height = 'auto';
+  tempContainer.style.overflow = 'hidden';
 
   tempContainer.appendChild(tierListClone);
-  tempContainer.appendChild(gameTitleClone);
+  tempContainer.appendChild(columnizedTitleContainer);
   document.body.appendChild(tempContainer);
 
+  // Render and download the PNG
   const scale = parseFloat(document.getElementById("quality").value);
-html2canvas(tempContainer, {
-  useCORS: true,
-  scale: scale
-}).then((canvas) => {
-  // Trim 2px off the bottom to remove the white line
-  const trimmedCanvas = document.createElement('canvas');
-  const ctx = trimmedCanvas.getContext('2d');
-  trimmedCanvas.width = canvas.width;
-  trimmedCanvas.height = canvas.height - 2; // remove bottom 2px
+  html2canvas(tempContainer, {
+    useCORS: true,
+    scale: scale
+  }).then((canvas) => {
+    const trimmedCanvas = document.createElement('canvas');
+    const ctx = trimmedCanvas.getContext('2d');
+    trimmedCanvas.width = canvas.width - 2;
+    trimmedCanvas.height = canvas.height - 2;
+    ctx.drawImage(canvas, 0, 0);
 
-  ctx.drawImage(canvas, 0, 0);
+    const dataURL = trimmedCanvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = 'tier_list.png';
+    link.click();
 
-  const dataURL = trimmedCanvas.toDataURL('image/png');
-  const link = document.createElement('a');
-  link.href = dataURL;
-  link.download = 'tier_list.png';
-  link.click();
-
-  // Clean up
-  document.body.removeChild(tempContainer);
-  scrollContainer.style.display = '';
-  tierListElement.style.width = '';
-  settingsModal.style.display = '';
-  controls.style.display = '';
-  buttons.forEach(button => button.style.display = '');
-  tiers.forEach(tier => {
-    const excludeItems = tier.querySelectorAll('.exclude-item');
-    excludeItems.forEach(item => item.style.display = '');
+    // Restore UI
+    document.body.removeChild(tempContainer);
+    scrollContainer.style.display = '';
+    tierListElement.style.width = '';
+    settingsModal.style.display = '';
+    controls.style.display = '';
+    buttons.forEach(button => button.style.display = '');
+    tiers.forEach(tier => {
+      const excludeItems = tier.querySelectorAll('.exclude-item');
+      excludeItems.forEach(item => item.style.display = '');
+    });
+  }).catch((error) => {
+    console.error('Failed to capture and save as PNG:', error);
   });
-}).catch((error) => {
-  console.error('Failed to capture and save as PNG:', error);
 });
 
-});
 
 
   
