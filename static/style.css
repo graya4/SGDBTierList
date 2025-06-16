@@ -1,8 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap");
 
 * {
-  font-family: "Adobe Garamond Pro", sans-serif;
-  font-size: medium;
+  font-family: "EB Garamond", sans-serif;
+  font-optical-sizing: auto;
   padding: 0;
   margin: 0;
   box-sizing: border-box;
