@@ -112,7 +112,7 @@ button {
 }
 
 .controls {
-  width: 50px;
+  width: auto;
   background: var(--tier-control-bg-color);
   display: grid;
   align-content: center;
@@ -123,7 +123,7 @@ button {
   font-size: 1rem;
   background: transparent;
   color: #fff;
-  opacity: 0.75;
+  opacity: 0.5;
 }
 
 .controls button:is(:active, :hover) {
@@ -133,7 +133,7 @@ button {
 @media (min-width: 768px) {
   .controls {
     grid-template-columns: repeat(2, 1fr);
-    width: 72px;
+    width: auto;
   }
 
   .controls .settings {
