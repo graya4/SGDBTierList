@@ -262,6 +262,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
 
   // Clone the tier list
   const tierListClone = tierListElement.cloneNode(true);
+  tierListClone.style.pointerEvents = 'none';
 
   // Measure tier width
   const measureMaxWidth = (container) => {
@@ -291,18 +292,21 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   });
   document.body.appendChild(tempColumnWrapper);
 
-  const tierHeight = tierListElement.offsetHeight;
-  const fullTextHeight = tempColumnWrapper.offsetHeight;
-  const columnCount = Math.ceil(fullTextHeight / tierHeight);
+  // Measure actual tier height after DOM attachment
+  document.body.appendChild(tierListClone);
+  const tierHeight = tierListClone.offsetHeight;
+  document.body.removeChild(tierListClone);
 
   const columnizedTitleContainer = document.createElement('div');
   columnizedTitleContainer.style.display = 'flex';
   columnizedTitleContainer.style.flexDirection = 'row';
   columnizedTitleContainer.style.color = '#D6BA8D';
   columnizedTitleContainer.style.fontFamily = 'monospace';
+  columnizedTitleContainer.style.height = `${tierHeight}px`;
+  columnizedTitleContainer.style.overflow = 'hidden';
 
   let currentColumn = document.createElement('div');
-  currentColumn.style.padding = '10px'
+  currentColumn.style.padding = '10px';
   currentColumn.style.display = 'flex';
   currentColumn.style.flexDirection = 'column';
   currentColumn.style.marginRight = '40px';
@@ -316,9 +320,14 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     const nodeHeight = clone.offsetHeight;
     tempColumnWrapper.removeChild(clone);
 
-    if (currentHeight + nodeHeight > tierHeight / 1.40) {
+    console.log(node.textContent)
+    console.log(currentHeight + 21)
+    console.log(tierHeight)
+    
+
+    if (currentHeight + 21 > tierHeight - 10) {
       currentColumn = document.createElement('div');
-      currentColumn.style.padding = '10px'
+      currentColumn.style.padding = '10px';
       currentColumn.style.display = 'flex';
       currentColumn.style.flexDirection = 'column';
       currentColumn.style.marginRight = '40px';
@@ -328,7 +337,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     }
 
     currentColumn.appendChild(node.cloneNode(true));
-    currentHeight += nodeHeight;
+    currentHeight += 21;
   });
 
   document.body.removeChild(tempColumnWrapper);
@@ -337,6 +346,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   const tempContainer = document.createElement('div');
   tempContainer.style.display = 'flex';
   tempContainer.style.flexDirection = 'row';
+  tempContainer.style.alignItems = 'stretch';
   tempContainer.style.position = 'absolute';
   tempContainer.style.top = '-9999px';
   tempContainer.style.left = '-9999px';
