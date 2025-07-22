@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 from io import BytesIO
 from steam_web_api import Steam
+import urllib.parse
 
 api_file = open('API_KEY.txt')
 API_KEY = api_file.readline().strip()
@@ -59,7 +60,8 @@ def get_game_covers(game_ids):
 #SGDB API CALLS
 
 def search_game_sgdb(query):
-    search_url = f'https://www.steamgriddb.com/api/v2/search/autocomplete/{query}'
+    encoded_query = urllib.parse.quote(query, safe='')
+    search_url = f'https://www.steamgriddb.com/api/v2/search/autocomplete/{encoded_query}'
     response = requests.get(search_url, headers=headers_sgdb)
     if response.status_code == 200:
         return response.json()
@@ -83,6 +85,7 @@ def home():
 @app.route('/submit', methods=['POST'])
 def submit():
     user_input = request.form['input_data']
+    user_input = str(user_input)
     boxarts = []
     game_igdb = search_game_igdb(user_input)
     
