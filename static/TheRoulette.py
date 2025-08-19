@@ -3,7 +3,6 @@ import os
 import json
 import ast
 import math
-from tkinter import filedialog
 from PIL import Image, ImageDraw, ImageFont
 import requests
 from io import BytesIO
