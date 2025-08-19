@@ -1,4 +1,5 @@
 import requests
+from static import TheRoulette
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 from io import BytesIO
@@ -79,12 +80,12 @@ def get_game_grids_sgdb(game_id):
 # Route for serving the HTML file
 @app.route('/')
 def home():
-    return render_template('index.html')  # Ensure this file is in the 'templates' folder
+    return render_template('newindex.html')  # Ensure this file is in the 'templates' folder
 
 # Endpoint to handle form submission
 @app.route('/submit', methods=['POST'])
 def submit():
-    user_input = request.form['input_data']
+    user_input = request.form['searchbar']
     user_input = str(user_input)
     boxarts = []
     game_igdb = search_game_igdb(user_input)
@@ -128,7 +129,7 @@ def submit():
         except (IndexError, KeyError):
             continue
 
-    return jsonify({'response': f"{len(boxarts)} boxart(s) found.", 'boxarts': boxarts})
+    return jsonify({'response': f"{len(boxarts)} boxart(s).", 'boxarts': boxarts})
 
 # Proxy route for handling CORS issues
 @app.route('/proxy')
@@ -144,6 +145,16 @@ def proxy():
         return send_file(BytesIO(image_data), mimetype=response.headers['Content-Type'])
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/roulette_choose", methods=["POST"])
+def roulette_choose():
+    user_input = request.get_json()
+    user_input = str(user_input)
+    #print(user_input)
+    buffer = TheRoulette.roulettescript(user_input)
+    print("dont!")
+    return send_file(buffer, mimetype='image/png', download_name='roulette.png')
 
 if __name__ == '__main__':
     app.run(debug=True)

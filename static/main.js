@@ -234,6 +234,53 @@ function loadTierList(event) {
 }
 
 
+function listRoulette(){
+    const tierData = [];
+
+    const tiers = document.querySelectorAll('.tier');
+    tiers.forEach(tier => {
+        const tierName = tier.querySelector('.label span').textContent;
+        const tierColor = getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color');
+        const images = tier.querySelectorAll('.items img');
+        const imageData = Array.from(images).map(img => ({
+            src: img.src,
+            alt: img.alt
+        }));
+
+        tierData.push({ 
+            tier: tierName, 
+            color: tierColor, 
+            images: imageData 
+        });
+    });
+
+    const jsonString = JSON.stringify(tierData);
+
+    fetch("/roulette_choose", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: jsonString
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Network response was not ok");
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        const imgUrl = URL.createObjectURL(blob);
+        const resultImg = document.getElementById("resultImage");
+        resultImg.src = imgUrl;
+        resultImg.style.display = "block";
+    })
+    .catch(err => {
+        console.error("Fetch error:", err);
+    });
+}
+
+document.getElementById("roulette").addEventListener("click", listRoulette);
+
+
 
 // Event listeners for the Save and Load buttons
 document.getElementById('saveButton').addEventListener('click', saveTierList);
@@ -243,6 +290,10 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   const tierListElement = document.querySelector('.tiers.container');
   const gameTitleContainer = document.querySelector('.game-title-container');
   const scrollContainer = document.getElementById('scroll-container');
+
+  // Example: set showText = 1 or 0
+  const showText = parseInt(document.getElementById("showTextToggle").value || "1"); 
+  // ↑ You can replace this with however you want to set showText (hardcode, checkbox, etc.)
 
   // Hide UI elements
   const settingsModal = document.querySelector('.settings-modal');
@@ -279,68 +330,67 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   const tierWidth = measureMaxWidth(tierListElement);
   tierListClone.style.width = `${tierWidth}px`;
 
-  // Clone and reflow game title list into columns
-  const titleTextNodes = Array.from(gameTitleContainer.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
-  const tempColumnWrapper = document.createElement('div');
-  tempColumnWrapper.style.position = 'absolute';
-  tempColumnWrapper.style.visibility = 'hidden';
-  tempColumnWrapper.style.width = '400px';
-  tempColumnWrapper.style.font = window.getComputedStyle(gameTitleContainer).font;
-  titleTextNodes.forEach(node => {
-    const clone = node.cloneNode(true);
-    tempColumnWrapper.appendChild(clone);
-  });
-  document.body.appendChild(tempColumnWrapper);
+  // --- Only build game title container if showText === 1 ---
+  let columnizedTitleContainer = null;
 
-  // Measure actual tier height after DOM attachment
-  document.body.appendChild(tierListClone);
-  const tierHeight = tierListClone.offsetHeight;
-  document.body.removeChild(tierListClone);
+  if (showText === 1) {
+    const titleTextNodes = Array.from(gameTitleContainer.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+    const tempColumnWrapper = document.createElement('div');
+    tempColumnWrapper.style.position = 'absolute';
+    tempColumnWrapper.style.visibility = 'hidden';
+    tempColumnWrapper.style.width = '400px';
+    tempColumnWrapper.style.font = window.getComputedStyle(gameTitleContainer).font;
+    titleTextNodes.forEach(node => {
+      const clone = node.cloneNode(true);
+      tempColumnWrapper.appendChild(clone);
+    });
+    document.body.appendChild(tempColumnWrapper);
 
-  const columnizedTitleContainer = document.createElement('div');
-  columnizedTitleContainer.style.display = 'flex';
-  columnizedTitleContainer.style.flexDirection = 'row';
-  columnizedTitleContainer.style.color = '#D6BA8D';
-  columnizedTitleContainer.style.fontFamily = 'monospace';
-  columnizedTitleContainer.style.height = `${tierHeight}px`;
-  columnizedTitleContainer.style.overflow = 'hidden';
+    // Measure actual tier height after DOM attachment
+    document.body.appendChild(tierListClone);
+    const tierHeight = tierListClone.offsetHeight;
+    document.body.removeChild(tierListClone);
 
-  let currentColumn = document.createElement('div');
-  currentColumn.style.padding = '10px';
-  currentColumn.style.display = 'flex';
-  currentColumn.style.flexDirection = 'column';
-  currentColumn.style.marginRight = '40px';
-  currentColumn.style.whiteSpace = 'nowrap';
-  columnizedTitleContainer.appendChild(currentColumn);
+    columnizedTitleContainer = document.createElement('div');
+    columnizedTitleContainer.style.display = 'flex';
+    columnizedTitleContainer.style.flexDirection = 'row';
+    columnizedTitleContainer.style.color = '#D6BA8D';
+    columnizedTitleContainer.style.fontFamily = 'monospace';
+    columnizedTitleContainer.style.height = `${tierHeight}px`;
+    columnizedTitleContainer.style.overflow = 'hidden';
 
-  let currentHeight = 0;
-  titleTextNodes.forEach(node => {
-    const clone = node.cloneNode(true);
-    tempColumnWrapper.appendChild(clone);
-    const nodeHeight = clone.offsetHeight;
-    tempColumnWrapper.removeChild(clone);
+    let currentColumn = document.createElement('div');
+    currentColumn.style.padding = '10px';
+    currentColumn.style.display = 'flex';
+    currentColumn.style.flexDirection = 'column';
+    currentColumn.style.marginRight = '40px';
+    currentColumn.style.whiteSpace = 'nowrap';
+    columnizedTitleContainer.appendChild(currentColumn);
 
-    console.log(node.textContent)
-    console.log(currentHeight + 21)
-    console.log(tierHeight)
-    
+    let currentHeight = 0;
+    titleTextNodes.forEach(node => {
+      const clone = node.cloneNode(true);
+      tempColumnWrapper.appendChild(clone);
+      const nodeHeight = clone.offsetHeight;
+      tempColumnWrapper.removeChild(clone);
 
-    if (currentHeight + 21 > tierHeight - 10) {
-      currentColumn = document.createElement('div');
-      currentColumn.style.padding = '10px';
-      currentColumn.style.display = 'flex';
-      currentColumn.style.flexDirection = 'column';
-      currentColumn.style.marginRight = '40px';
-      currentColumn.style.whiteSpace = 'nowrap';
-      columnizedTitleContainer.appendChild(currentColumn);
-      currentHeight = 0;
-    }
+      if (currentHeight + 21 > tierHeight - 10) {
+        currentColumn = document.createElement('div');
+        currentColumn.style.padding = '10px';
+        currentColumn.style.display = 'flex';
+        currentColumn.style.flexDirection = 'column';
+        currentColumn.style.marginRight = '40px';
+        currentColumn.style.whiteSpace = 'nowrap';
+        columnizedTitleContainer.appendChild(currentColumn);
+        currentHeight = 0;
+      }
 
-    currentColumn.appendChild(node.cloneNode(true));
-    currentHeight += 21;
-  });
+      currentColumn.appendChild(node.cloneNode(true));
+      currentHeight += 21;
+    });
 
-  document.body.removeChild(tempColumnWrapper);
+    document.body.removeChild(tempColumnWrapper);
+  }
 
   // Set up the container for rendering
   const tempContainer = document.createElement('div');
@@ -354,7 +404,9 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   tempContainer.style.overflow = 'hidden';
 
   tempContainer.appendChild(tierListClone);
-  tempContainer.appendChild(columnizedTitleContainer);
+  if (showText === 1 && columnizedTitleContainer) {
+    tempContainer.appendChild(columnizedTitleContainer);
+  }
   document.body.appendChild(tempContainer);
 
   // Render and download the PNG
@@ -507,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadImages();
 });
 
-document.querySelector("h1").addEventListener("click", () => {
+document.querySelector("h2").addEventListener("click", () => {
   tiersContainer.appendChild(createTier());
 });
 

@@ -35,7 +35,7 @@ img {
 }
 
 .scroll-container {
-  width: 600px; /* Adjust the width as needed */
+  flex: 1;
   height: 400px; /* Adjust the height as needed */
   overflow-y: scroll; /* Enables vertical scrolling */
   border: 2px solid #000000;
@@ -45,7 +45,6 @@ img {
 }
 .scroll-container img {
   display: inline-block;
-  width: 100px;
   aspect-ratio: .67;
   height: auto;
   margin-right: 10px;
@@ -277,6 +276,7 @@ input[type="text"], input[type="file"], button, .button {
 
 /* Style for text input bar */
 input[type="text"] {
+  
   background-color: white; /* Set background color to white */
   color: black; /* Set text color to black for visibility */
   border: 1px solid #ccc; /* Optional: Add a subtle border */
@@ -303,3 +303,4 @@ button:hover, .button:hover {
   margin-left: 10px;
   color: red;
 }
+
