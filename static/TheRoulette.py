@@ -20,9 +20,12 @@ def roulette(inserted_json):
         fulljson = json.load(f)
 
         for i, tier in enumerate(fulljson):
-            #print(tier)
-            # Exponential decay weight based on tier index
-            weight = math.exp(-decay_factor * i)
+            if i == 0:
+                # First tier boosted by 25%
+                weight = 1.30 * math.exp(-decay_factor * i)
+            else:
+                # Subsequent tiers use normal decay
+                weight = math.exp(-decay_factor * i)
 
             for game in tier["images"]:
                 game_list.append(game['alt'])

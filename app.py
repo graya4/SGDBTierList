@@ -153,7 +153,7 @@ def roulette_choose():
     user_input = str(user_input)
     #print(user_input)
     buffer = TheRoulette.roulettescript(user_input)
-    print("dont!")
+    #print("dont!")
     return send_file(buffer, mimetype='image/png', download_name='roulette.png')
 
 if __name__ == '__main__':
