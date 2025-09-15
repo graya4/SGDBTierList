@@ -22,7 +22,7 @@ def roulette(inserted_json):
         for i, tier in enumerate(fulljson):
             if i == 0:
                 # First tier boosted by 25%
-                weight = 1.30 * math.exp(-decay_factor * i)
+                weight = 0.999999999 * math.exp(-decay_factor * i)
             else:
                 # Subsequent tiers use normal decay
                 weight = math.exp(-decay_factor * i)

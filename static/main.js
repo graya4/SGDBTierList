@@ -114,35 +114,6 @@ function handleImageRemove(event) {
   updateAltTextColorAndOrder();
 }
 
-function updateAltTextColorAndOrder() {
-  const gameTitleContainer = document.querySelector('.game-title-container');
-  gameTitleContainer.innerHTML = ''; // Clear existing titles
-
-  // Iterate over each tier and collect the images and their alt texts
-  const tiers = document.querySelectorAll('.tier');
-  tiers.forEach(tier => {
-      const tierColor = window.getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color');
-      const images = tier.querySelectorAll('.items img');
-      
-      if (images.length > 0) {
-          // Add game titles for this tier
-          images.forEach(image => {
-              const altText = image.alt;
-              const titleElement = document.createElement('p');
-              titleElement.textContent = altText;
-              titleElement.style.color = tierColor;
-              titleElement.contentEditable = true; // Make the text editable
-              titleElement.addEventListener('blur', () => handleTextEdit(titleElement, image)); // Add blur event to handle editing
-              gameTitleContainer.appendChild(titleElement);
-          });
-
-          // Add a space between tiers
-          const spacer = document.createElement('br');
-          gameTitleContainer.appendChild(spacer);
-      }
-  });
-}
-
 // Function to extract the current state of the tier list and save it to a JSON file
 function saveTierList() {
   const tierData = [];
@@ -155,7 +126,10 @@ function saveTierList() {
       const images = tier.querySelectorAll('.items img');
       const imageData = Array.from(images).map(img => ({
           src: img.src,
-          alt: img.alt
+          alt: img.alt,
+          hours: img.dataset.hours || "0",
+          minutes: img.dataset.minutes || "0",
+          seconds: img.dataset.seconds || "0"
       }));
 
       tierData.push({ 
@@ -209,21 +183,30 @@ function loadTierList(event) {
               label.style.setProperty('--color', tierColor);
 
               data.images.forEach(imageData => {
-                  const imgElement = document.createElement('img');
-                  imgElement.src = imageData.src;
-                  imgElement.alt = imageData.alt;
-                  imgElement.draggable = true;
-                  imgElement.style.margin = '5px';
-                  imgElement.addEventListener('dragstart', handleDragStart);
-                  imgElement.addEventListener('dragend', handleDragEnd);
-                  imgElement.addEventListener('dblclick', handleImageRemove);
-                  itemsContainer.appendChild(imgElement);
+                const imgElement = document.createElement('img');
+                imgElement.src = imageData.src;
+                imgElement.alt = imageData.alt;
+
+                // Restore playtime from JSON
+                imgElement.dataset.hours = imageData.hours || "0";
+                imgElement.dataset.minutes = imageData.minutes || "0";
+                imgElement.dataset.seconds = imageData.seconds || "0";
+
+                imgElement.draggable = true;
+                imgElement.style.margin = '5px';
+                imgElement.addEventListener('dragstart', handleDragStart);
+                imgElement.addEventListener('dragend', handleDragEnd);
+                imgElement.addEventListener('dblclick', handleImageRemove);
+                itemsContainer.appendChild(imgElement);
               });
 
-              tiersContainer.appendChild(tier);
-          });
 
-          updateAltTextColorAndOrder();
+                tiersContainer.appendChild(tier);
+              });
+
+              updateAltTextColorAndOrder();
+
+
       } catch (error) {
           alert('Failed to load the tier list. The file might be corrupted or in an invalid format.');
           console.error('Error parsing JSON:', error);
@@ -291,17 +274,21 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   const gameTitleContainer = document.querySelector('.game-title-container');
   const scrollContainer = document.getElementById('scroll-container');
 
-  // Example: set showText = 1 or 0
-  const showText = parseInt(document.getElementById("showTextToggle").value || "1"); 
-  // ↑ You can replace this with however you want to set showText (hardcode, checkbox, etc.)
+  // Quality scale
+  const scale = parseFloat(document.getElementById("quality").value);
+
+  // Show text toggle
+  const showText = parseInt(document.getElementById("showTextToggle").value || "1");
+
+  // Playtime toggle
+  const showPlaytimes = parseInt(document.getElementById("showPlaytimeToggle").value || "1");
 
   // Hide UI elements
   const settingsModal = document.querySelector('.settings-modal');
   const controls = document.querySelector('.controls');
   settingsModal.style.display = 'none';
-  controls.style.display = 'none';
+  if (controls) controls.style.display = 'none';
   scrollContainer.style.display = 'none';
-
   const buttons = document.querySelectorAll('button');
   buttons.forEach(button => button.style.display = 'none');
 
@@ -330,9 +317,8 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   const tierWidth = measureMaxWidth(tierListElement);
   tierListClone.style.width = `${tierWidth}px`;
 
-  // --- Only build game title container if showText === 1 ---
+  // Build title container only if showText === 1
   let columnizedTitleContainer = null;
-
   if (showText === 1) {
     const titleTextNodes = Array.from(gameTitleContainer.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
     const tempColumnWrapper = document.createElement('div');
@@ -356,43 +342,60 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     columnizedTitleContainer.style.flexDirection = 'row';
     columnizedTitleContainer.style.color = '#D6BA8D';
     columnizedTitleContainer.style.fontFamily = 'monospace';
-    columnizedTitleContainer.style.height = `${tierHeight}px`;
+    columnizedTitleContainer.style.height = `${tierHeight + 8}px`;
     columnizedTitleContainer.style.overflow = 'hidden';
+    columnizedTitleContainer.style.padding = '6px'; // padding buffer
+    columnizedTitleContainer.style.lineHeight = '1.3';
+    columnizedTitleContainer.style.paddingBottom = '4px';
 
     let currentColumn = document.createElement('div');
-    currentColumn.style.padding = '10px';
+    currentColumn.style.padding = '6px';
     currentColumn.style.display = 'flex';
     currentColumn.style.flexDirection = 'column';
     currentColumn.style.marginRight = '40px';
+    currentColumn.style.lineHeight = '1.3';
     currentColumn.style.whiteSpace = 'nowrap';
     columnizedTitleContainer.appendChild(currentColumn);
 
     let currentHeight = 0;
     titleTextNodes.forEach(node => {
+      console.log(currentHeight)
+      console.log(tierHeight)
+      console.log(node)
       const clone = node.cloneNode(true);
       tempColumnWrapper.appendChild(clone);
       const nodeHeight = clone.offsetHeight;
       tempColumnWrapper.removeChild(clone);
 
-      if (currentHeight + 21 > tierHeight - 10) {
-        currentColumn = document.createElement('div');
-        currentColumn.style.padding = '10px';
-        currentColumn.style.display = 'flex';
-        currentColumn.style.flexDirection = 'column';
-        currentColumn.style.marginRight = '40px';
-        currentColumn.style.whiteSpace = 'nowrap';
-        columnizedTitleContainer.appendChild(currentColumn);
-        currentHeight = 0;
-      }
+    if (currentHeight + nodeHeight > tierHeight) {
+      currentColumn = document.createElement('div');
+      currentColumn.style.padding = '10px';
+      currentColumn.style.display = 'flex';
+      currentColumn.style.flexDirection = 'column';
+      currentColumn.style.marginRight = '50px';
+      currentColumn.style.whiteSpace = 'nowrap';
+      columnizedTitleContainer.appendChild(currentColumn);
+      currentHeight = 0;
+    }
 
-      currentColumn.appendChild(node.cloneNode(true));
-      currentHeight += 21;
+    currentColumn.appendChild(node.cloneNode(true));
+    currentHeight += nodeHeight;
+
     });
 
     document.body.removeChild(tempColumnWrapper);
   }
 
-  // Set up the container for rendering
+  // Hide playtimes in the cloned container if toggle is off
+  if (showPlaytimes === 0 && columnizedTitleContainer) {
+    const playtimeEls = columnizedTitleContainer.querySelectorAll('input[type="number"], span, #totalPlaytime');
+    playtimeEls.forEach(el => {
+      el.remove(); // strip them out entirely
+    });
+  }
+
+
+  // Container for rendering
   const tempContainer = document.createElement('div');
   tempContainer.style.display = 'flex';
   tempContainer.style.flexDirection = 'row';
@@ -402,6 +405,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   tempContainer.style.left = '-9999px';
   tempContainer.style.backgroundColor = '#1A1A17';
   tempContainer.style.overflow = 'hidden';
+  tempContainer.style.padding = '6px';
 
   tempContainer.appendChild(tierListClone);
   if (showText === 1 && columnizedTitleContainer) {
@@ -409,17 +413,20 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   }
   document.body.appendChild(tempContainer);
 
-  // Render and download the PNG
-  const scale = parseFloat(document.getElementById("quality").value);
+  // Render and download PNG
   html2canvas(tempContainer, {
     useCORS: true,
     scale: scale
   }).then((canvas) => {
+    // Trim 1% off the right side
     const trimmedCanvas = document.createElement('canvas');
     const ctx = trimmedCanvas.getContext('2d');
-    trimmedCanvas.width = canvas.width - 2;
-    trimmedCanvas.height = canvas.height - 2;
-    ctx.drawImage(canvas, 0, 0);
+
+    const trimAmount = Math.floor(canvas.width * 0.01); // 1% of width
+    trimmedCanvas.width = canvas.width - trimAmount;
+    trimmedCanvas.height = canvas.height;
+
+    ctx.drawImage(canvas, 0, 0, trimmedCanvas.width, trimmedCanvas.height, 0, 0, trimmedCanvas.width, trimmedCanvas.height);
 
     const dataURL = trimmedCanvas.toDataURL('image/png');
     const link = document.createElement('a');
@@ -427,12 +434,13 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     link.download = 'tier_list.png';
     link.click();
 
+
     // Restore UI
     document.body.removeChild(tempContainer);
     scrollContainer.style.display = '';
     tierListElement.style.width = '';
     settingsModal.style.display = '';
-    controls.style.display = '';
+    if (controls) controls.style.display = '';
     buttons.forEach(button => button.style.display = '');
     tiers.forEach(tier => {
       const excludeItems = tier.querySelectorAll('.exclude-item');
@@ -442,6 +450,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     console.error('Failed to capture and save as PNG:', error);
   });
 });
+
 
 
 

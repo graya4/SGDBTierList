@@ -250,6 +250,39 @@
     .chart-btn:hover {
       background-color: #3a3a3a;
     }
+    
+
+.playtime-modal {
+  background: #2b2b2b;
+  border: none;
+  border-radius: 8px;
+  padding: 20px;
+  color: white;
+  max-width: 300px;
+}
+.playtime-modal input {
+  width: 60px;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #111;
+  color: white;
+}
+.playtime-modal button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+.playtime-modal button#savePlaytime {
+  background: #4CAF50;
+  color: black;
+}
+.playtime-modal button#cancelPlaytime {
+  background: #666;
+  color: white;
+}
+
 
 #rouletteResult {
   display: flex;
@@ -330,6 +363,16 @@
             <option value="0">No</option>
           </select>
         </div>
+
+        <hr>
+        
+        <div class="option-group">
+          <label class="option-label" for="showPlaytimeToggle">Show Playtimes:</label>
+          <select name="showPlaytimeToggle" id="showPlaytimeToggle">
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+          </select>
+        </div>
       </div>
 
       <div class="tab-panel" id="tab3">
@@ -357,6 +400,7 @@
     </div>
   </div>
 
+
   <!-- Tiers container -->
   <div class="tiers container"></div>
 
@@ -379,6 +423,22 @@
     </dialog>
 
     <div id="imageContainer"></div>
+
+
+<dialog class="playtime-modal">
+  <section>
+    <h3 style="margin:0 0 10px; color:white;">Edit Playtime</h3>
+    <div style="display:flex; gap:10px; margin-bottom:10px; color:white;">
+      <label>H: <input type="number" id="playtimeHours" min="0" value="0"></label>
+      <label>M: <input type="number" id="playtimeMinutes" min="0" max="59" value="0"></label>
+      <label>S: <input type="number" id="playtimeSeconds" min="0" max="59" value="0"></label>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button id="cancelPlaytime">Cancel</button>
+      <button id="savePlaytime">Save</button>
+    </div>
+  </section>
+</dialog>
 
 
 <script>
@@ -503,33 +563,182 @@ function handleImageRemove(event) {
 }
 
 function updateAltTextColorAndOrder() {
-    const gameTitleContainer = document.querySelector('.game-title-container');
-    gameTitleContainer.innerHTML = ''; // Clear existing titles
+  const gameTitleContainer = document.querySelector('.game-title-container');
+  gameTitleContainer.style.overflow = 'visible';
+  gameTitleContainer.innerHTML = ''; // Clear existing titles
 
-    // Iterate over each tier and collect the images and their alt texts
-    const tiers = document.querySelectorAll('.tier');
-    tiers.forEach(tier => {
-        const tierColor = window.getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color');
-        const images = tier.querySelectorAll('.items img');
-        
-        if (images.length > 0) {
-            // Add game titles for this tier
-            images.forEach(image => {
-                const altText = image.alt;
-                const titleElement = document.createElement('p');
-                titleElement.textContent = altText;
-                titleElement.style.color = tierColor;
-                titleElement.contentEditable = true; // Make the text editable
-                titleElement.addEventListener('blur', () => handleTextEdit(titleElement, image)); // Add blur event to handle editing
-                gameTitleContainer.appendChild(titleElement);
-            });
+  let totalSeconds = 0;
 
-            // Add a space between tiers
-            const spacer = document.createElement('br');
-            gameTitleContainer.appendChild(spacer);
-        }
-    });
+  const tiers = document.querySelectorAll('.tier');
+  tiers.forEach(tier => {
+    const labelEl = tier.querySelector('.label');
+    const tierColor = window.getComputedStyle(labelEl).getPropertyValue('--color').trim();
+    const images = tier.querySelectorAll('.items img');
+
+    if (images.length > 0) {
+      images.forEach(image => {
+        // Row wrapper
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'space-between';
+        wrapper.style.gap = '6px';
+        wrapper.style.margin = '0';
+        wrapper.style.lineHeight = '1.1';
+        wrapper.style.padding = '2px 0 4px 0'; // extra space at bottom
+
+
+        // Title element
+        const titleElement = document.createElement('p');
+        titleElement.textContent = image.alt || '';
+        titleElement.style.color = tierColor;
+        titleElement.contentEditable = true;
+        titleElement.style.flex = '1 1 auto';
+        titleElement.style.margin = '0';
+        titleElement.style.overflow = 'hidden';
+        titleElement.style.textOverflow = 'ellipsis';
+        titleElement.style.whiteSpace = 'nowrap';
+        titleElement.style.lineHeight = '1.1';
+
+        // Ensure dataset exists
+        if (!image.dataset.hours) image.dataset.hours = "0";
+        if (!image.dataset.minutes) image.dataset.minutes = "0";
+        if (!image.dataset.seconds) image.dataset.seconds = "0";
+
+        // Playtime text
+        const timeDisplay = document.createElement('span');
+        timeDisplay.style.color = tierColor;
+        timeDisplay.style.fontWeight = 'bold';
+        timeDisplay.textContent = formatSeconds(
+          parseTimeToSeconds(image.dataset.hours, image.dataset.minutes, image.dataset.seconds)
+        );
+
+        // Edit button
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.textContent = '⏱️';
+        editBtn.style.background = 'transparent';
+        editBtn.style.border = 'none';
+        editBtn.style.cursor = 'pointer';
+        editBtn.style.color = tierColor;
+        editBtn.style.fontSize = '1rem';
+        editBtn.style.marginLeft = '6px';
+
+        editBtn.addEventListener('click', () => {
+          const modal = document.querySelector('.playtime-modal');
+          const hoursField = document.getElementById('playtimeHours');
+          const minutesField = document.getElementById('playtimeMinutes');
+          const secondsField = document.getElementById('playtimeSeconds');
+          const saveBtn = document.getElementById('savePlaytime');
+          const cancelBtn = document.getElementById('cancelPlaytime');
+
+          // Pre-fill with current values
+          hoursField.value = image.dataset.hours || "0";
+          minutesField.value = image.dataset.minutes || "0";
+          secondsField.value = image.dataset.seconds || "0";
+
+          modal.showModal();
+
+          const handleSave = () => {
+            const h = hoursField.value || "0";
+            const m = minutesField.value || "0";
+            const s = secondsField.value || "0";
+
+            image.dataset.hours = h;
+            image.dataset.minutes = m;
+            image.dataset.seconds = s;
+
+            timeDisplay.textContent = formatSeconds(parseTimeToSeconds(h, m, s));
+            calculateTotalPlaytime();
+
+            modal.close();
+            saveBtn.removeEventListener('click', handleSave);
+            cancelBtn.removeEventListener('click', handleCancel);
+          };
+
+          const handleCancel = () => {
+            modal.close();
+            saveBtn.removeEventListener('click', handleSave);
+            cancelBtn.removeEventListener('click', handleCancel);
+          };
+
+          saveBtn.addEventListener('click', handleSave);
+          cancelBtn.addEventListener('click', handleCancel);
+        });
+
+
+        // Runtime wrapper
+        const runtimeWrapper = document.createElement('div');
+        runtimeWrapper.style.display = 'inline-flex';
+        runtimeWrapper.style.alignItems = 'center';
+        runtimeWrapper.append(timeDisplay, editBtn);
+
+        // Add to row
+        wrapper.appendChild(titleElement);
+        wrapper.appendChild(runtimeWrapper);
+        gameTitleContainer.appendChild(wrapper);
+
+        // Add to total
+        totalSeconds += parseTimeToSeconds(
+          image.dataset.hours,
+          image.dataset.minutes,
+          image.dataset.seconds
+        );
+      });
+
+      // Spacer between tiers
+      gameTitleContainer.appendChild(document.createElement('br'));
+    }
+  });
+
+  // Total element
+  let totalElement = document.getElementById('totalPlaytime');
+  if (!totalElement) {
+    totalElement = document.createElement('p');
+    totalElement.id = 'totalPlaytime';
+    totalElement.style.color = 'green';
+    totalElement.style.fontWeight = 'bold';
+    totalElement.style.marginTop = '8px';
+    gameTitleContainer.appendChild(totalElement);
+  }
+  totalElement.textContent = `Time Wasted: ${formatSeconds(totalSeconds)}`;
 }
+
+// Helper: convert runtime → seconds
+function parseTimeToSeconds(h, m, s) {
+  const hh = parseInt(h) || 0;
+  const mm = parseInt(m) || 0;
+  const ss = parseInt(s) || 0;
+  return hh * 3600 + mm * 60 + ss;
+}
+
+function formatSeconds(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+}
+
+function calculateTotalPlaytime() {
+  let totalSeconds = 0;
+  const images = document.querySelectorAll('.tier .items img');
+  images.forEach(image => {
+    totalSeconds += parseTimeToSeconds(
+      image.dataset.hours,
+      image.dataset.minutes,
+      image.dataset.seconds
+    );
+  });
+
+  const totalElement = document.getElementById('totalPlaytime');
+  if (totalElement) {
+    totalElement.textContent = `Time Wasted: ${formatSeconds(totalSeconds)}`;
+  }
+}
+
+
+
+
 
 function handleTextEdit(titleElement, image) {
     // Update the alt text of the image with the new text
