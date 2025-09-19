@@ -342,7 +342,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     columnizedTitleContainer.style.flexDirection = 'row';
     columnizedTitleContainer.style.color = '#D6BA8D';
     columnizedTitleContainer.style.fontFamily = 'monospace';
-    columnizedTitleContainer.style.height = `${tierHeight + 8}px`;
+    columnizedTitleContainer.style.height = `${tierHeight + 5}px`;
     columnizedTitleContainer.style.overflow = 'hidden';
     columnizedTitleContainer.style.padding = '6px'; // padding buffer
     columnizedTitleContainer.style.lineHeight = '1.3';
@@ -367,7 +367,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
       const nodeHeight = clone.offsetHeight;
       tempColumnWrapper.removeChild(clone);
 
-    if (currentHeight + nodeHeight > tierHeight) {
+    if (currentHeight + nodeHeight > tierHeight - 23) {
       currentColumn = document.createElement('div');
       currentColumn.style.padding = '10px';
       currentColumn.style.display = 'flex';
