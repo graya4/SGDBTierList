@@ -314,8 +314,25 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     document.body.removeChild(temp);
     return width;
   };
-  const tierWidth = measureMaxWidth(tierListElement);
-  tierListClone.style.width = `${tierWidth}px`;
+
+    const measureMaxHeight = (container) => {
+    const temp = container.cloneNode(true);
+    temp.style.position = 'absolute';
+    temp.style.visibility = 'hidden';
+    temp.style.whiteSpace = 'nowrap';
+    document.body.appendChild(temp);
+    const height = temp.offsetHeight;
+    document.body.removeChild(temp);
+    return height;
+  };
+  if (document.getElementById('showTextToggle').value === '0') {
+    const tierWidth = measureMaxWidth(tierListElement);
+    tierListClone.style.width = `${tierWidth}px`;
+  }
+  else {
+    const tierWidth = measureMaxWidth(tierListElement) * 0.85;
+    tierListClone.style.width = `${tierWidth}px`;
+  }
 
   // Build title container only if showText === 1
   let columnizedTitleContainer = null;
@@ -332,17 +349,14 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     });
     document.body.appendChild(tempColumnWrapper);
 
-    // Measure actual tier height after DOM attachment
-    document.body.appendChild(tierListClone);
-    const tierHeight = tierListClone.offsetHeight;
-    document.body.removeChild(tierListClone);
+    const tierHeight = measureMaxHeight(tierListClone);
 
     columnizedTitleContainer = document.createElement('div');
     columnizedTitleContainer.style.display = 'flex';
     columnizedTitleContainer.style.flexDirection = 'row';
     columnizedTitleContainer.style.color = '#D6BA8D';
     columnizedTitleContainer.style.fontFamily = 'monospace';
-    columnizedTitleContainer.style.height = `${tierHeight + 5}px`;
+    columnizedTitleContainer.style.height = `${tierHeight}px`;
     columnizedTitleContainer.style.overflow = 'hidden';
     columnizedTitleContainer.style.padding = '6px'; // padding buffer
     columnizedTitleContainer.style.lineHeight = '1.3';
@@ -358,29 +372,40 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     columnizedTitleContainer.appendChild(currentColumn);
 
     let currentHeight = 0;
+    let count = 0;
+    let oldNodeHeight;
     titleTextNodes.forEach(node => {
       console.log(currentHeight)
       console.log(tierHeight)
       console.log(node)
       const clone = node.cloneNode(true);
       tempColumnWrapper.appendChild(clone);
-      const nodeHeight = clone.offsetHeight;
+      let nodeHeight = clone.offsetHeight;
       tempColumnWrapper.removeChild(clone);
+      console.log(nodeHeight)
+      console.log('----')
 
-    if (currentHeight + nodeHeight > tierHeight - 23) {
+      if (nodeHeight === 0){
+        nodeHeight = oldNodeHeight
+      }
+
+    if (currentHeight + nodeHeight > tierHeight) {
       currentColumn = document.createElement('div');
-      currentColumn.style.padding = '10px';
+      currentColumn.style.padding = '6px';
       currentColumn.style.display = 'flex';
       currentColumn.style.flexDirection = 'column';
-      currentColumn.style.marginRight = '50px';
+      currentColumn.style.marginRight = '40px';
+      currentColumn.style.lineHeight = '1.3';
       currentColumn.style.whiteSpace = 'nowrap';
       columnizedTitleContainer.appendChild(currentColumn);
+      oldNodeHeight = nodeHeight;
       currentHeight = 0;
     }
 
     currentColumn.appendChild(node.cloneNode(true));
     currentHeight += nodeHeight;
-
+    count += 1;
+    oldNodeHeight = nodeHeight;
     });
 
     document.body.removeChild(tempColumnWrapper);
@@ -422,9 +447,19 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     const trimmedCanvas = document.createElement('canvas');
     const ctx = trimmedCanvas.getContext('2d');
 
-    const trimAmount = Math.floor(canvas.width * 0.01); // 1% of width
-    trimmedCanvas.width = canvas.width - trimAmount;
-    trimmedCanvas.height = canvas.height;
+    const trimAmount = 4;
+    if (document.getElementById('showTextToggle').value === '0') {
+      console.log(canvas.height)
+      console.log(trimAmount)
+      trimmedCanvas.height = canvas.height - trimAmount;
+      trimmedCanvas.width = canvas.width;
+    }
+    else {
+      console.log(canvas.width)
+      console.log(trimAmount)
+      trimmedCanvas.width = canvas.width - trimAmount;
+      trimmedCanvas.height = canvas.height
+    }
 
     ctx.drawImage(canvas, 0, 0, trimmedCanvas.width, trimmedCanvas.height, 0, 0, trimmedCanvas.width, trimmedCanvas.height);
 

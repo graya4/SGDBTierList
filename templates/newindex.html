@@ -699,6 +699,8 @@ function updateAltTextColorAndOrder() {
     totalElement.style.color = 'green';
     totalElement.style.fontWeight = 'bold';
     totalElement.style.marginTop = '8px';
+    totalElement.style.fontSize = '2.3rem'
+    totalElement.style.textAlign = 'right';
     gameTitleContainer.appendChild(totalElement);
   }
   totalElement.textContent = `Time Wasted: ${formatSeconds(totalSeconds)}`;
