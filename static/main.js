@@ -330,7 +330,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     tierListClone.style.width = `${tierWidth}px`;
   }
   else {
-    const tierWidth = measureMaxWidth(tierListElement) * 0.85;
+    const tierWidth = measureMaxWidth(tierListElement) * 0.7;
     tierListClone.style.width = `${tierWidth}px`;
   }
 
