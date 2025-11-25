@@ -146,7 +146,9 @@ function saveTierList() {
   const blob = new Blob([jsonString], { type: 'application/json' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = 'tier_list.json';
+  const title = document.getElementById("tierListTitle")?.value.trim() || "tier_list";
+  const safeTitle = title.replace(/[^a-z0-9_\-]+/gi, "_");
+  link.download = `${safeTitle}.json`;
   link.click();
 }
 
@@ -274,6 +276,20 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   const gameTitleContainer = document.querySelector('.game-title-container');
   const scrollContainer = document.getElementById('scroll-container');
 
+  // List title
+  const title = document.getElementById("tierListTitle").value.trim() || "Tier List";
+  const titleElement = document.createElement('div');
+  titleElement.textContent = title;
+  titleElement.style.fontFamily = "'EB Garamond', serif";
+  titleElement.style.fontSize = "48px";
+  titleElement.style.color = "white";
+  titleElement.style.fontWeight = 'bold';
+  titleElement.style.textAlign = "center";
+  titleElement.style.marginBottom = "30px";
+  titleElement.style.width = "100%";
+
+
+
   // Quality scale
   const scale = parseFloat(document.getElementById("quality").value);
 
@@ -349,53 +365,46 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     });
     document.body.appendChild(tempColumnWrapper);
 
-    const tierHeight = measureMaxHeight(tierListClone);
+    const tierHeight = measureMaxHeight(tierListClone) - 5;
+    
 
     columnizedTitleContainer = document.createElement('div');
     columnizedTitleContainer.style.display = 'flex';
     columnizedTitleContainer.style.flexDirection = 'row';
     columnizedTitleContainer.style.color = '#D6BA8D';
     columnizedTitleContainer.style.fontFamily = 'monospace';
-    columnizedTitleContainer.style.height = `${tierHeight}px`;
+    columnizedTitleContainer.style.height = tierHeight + 'px';
     columnizedTitleContainer.style.overflow = 'hidden';
-    columnizedTitleContainer.style.padding = '6px'; // padding buffer
-    columnizedTitleContainer.style.lineHeight = '1.3';
-    columnizedTitleContainer.style.paddingBottom = '4px';
 
     let currentColumn = document.createElement('div');
-    currentColumn.style.padding = '6px';
     currentColumn.style.display = 'flex';
     currentColumn.style.flexDirection = 'column';
     currentColumn.style.marginRight = '40px';
-    currentColumn.style.lineHeight = '1.3';
     currentColumn.style.whiteSpace = 'nowrap';
     columnizedTitleContainer.appendChild(currentColumn);
 
     let currentHeight = 0;
-    let count = 0;
     let oldNodeHeight;
     titleTextNodes.forEach(node => {
-      console.log(currentHeight)
-      console.log(tierHeight)
-      console.log(node)
+      console.log("CURRENT HEIGHT: " + currentHeight)
+      console.log("TIER HEIGHT: " + tierHeight)
+      console.log("NODE: " + node)
       const clone = node.cloneNode(true);
       tempColumnWrapper.appendChild(clone);
       let nodeHeight = clone.offsetHeight;
       tempColumnWrapper.removeChild(clone);
-      console.log(nodeHeight)
+      console.log("NODE HEIGHT: " + nodeHeight)
       console.log('----')
 
       if (nodeHeight === 0){
-        nodeHeight = oldNodeHeight
+        //nodeHeight = oldNodeHeight
       }
 
-    if (currentHeight + nodeHeight > tierHeight) {
+    if (currentHeight + nodeHeight > tierHeight - 5) {
       currentColumn = document.createElement('div');
-      currentColumn.style.padding = '6px';
       currentColumn.style.display = 'flex';
       currentColumn.style.flexDirection = 'column';
       currentColumn.style.marginRight = '40px';
-      currentColumn.style.lineHeight = '1.3';
       currentColumn.style.whiteSpace = 'nowrap';
       columnizedTitleContainer.appendChild(currentColumn);
       oldNodeHeight = nodeHeight;
@@ -404,7 +413,6 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
 
     currentColumn.appendChild(node.cloneNode(true));
     currentHeight += nodeHeight;
-    count += 1;
     oldNodeHeight = nodeHeight;
     });
 
@@ -419,24 +427,42 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     });
   }
 
+  
 
   // Container for rendering
+  // OUTER CONTAINER — vertical layout (title on its own row)
   const tempContainer = document.createElement('div');
   tempContainer.style.display = 'flex';
-  tempContainer.style.flexDirection = 'row';
-  tempContainer.style.alignItems = 'stretch';
+  tempContainer.style.flexDirection = 'column';  // ✅ Title sits ABOVE
   tempContainer.style.position = 'absolute';
   tempContainer.style.top = '-9999px';
   tempContainer.style.left = '-9999px';
   tempContainer.style.backgroundColor = '#1A1A17';
-  tempContainer.style.overflow = 'hidden';
   tempContainer.style.padding = '6px';
+  tempContainer.style.overflow = 'hidden';
 
-  tempContainer.appendChild(tierListClone);
+  // Add TITLE first
+  tempContainer.appendChild(titleElement);
+
+  // INNER CONTAINER — horizontal layout for the actual list
+  const rowWrapper = document.createElement('div');
+  rowWrapper.style.display = 'flex';
+  rowWrapper.style.flexDirection = 'row';  // ✅ List + columns side-by-side
+  rowWrapper.style.alignItems = 'flex-start';
+  rowWrapper.style.gap = '20px';  // optional, can remove
+
+  // Add tier list and optional columnized titles
+  rowWrapper.appendChild(tierListClone);
   if (showText === 1 && columnizedTitleContainer) {
-    tempContainer.appendChild(columnizedTitleContainer);
+    rowWrapper.appendChild(columnizedTitleContainer);
   }
+
+  // Add rowWrapper under the title
+  tempContainer.appendChild(rowWrapper);
+
+  // Add tempContainer to document for rendering
   document.body.appendChild(tempContainer);
+
 
   // Render and download PNG
   html2canvas(tempContainer, {
@@ -458,7 +484,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
       console.log(canvas.width)
       console.log(trimAmount)
       trimmedCanvas.width = canvas.width - trimAmount;
-      trimmedCanvas.height = canvas.height
+      trimmedCanvas.height = canvas.height - trimAmount;
     }
 
     ctx.drawImage(canvas, 0, 0, trimmedCanvas.width, trimmedCanvas.height, 0, 0, trimmedCanvas.width, trimmedCanvas.height);
@@ -466,7 +492,8 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     const dataURL = trimmedCanvas.toDataURL('image/png');
     const link = document.createElement('a');
     link.href = dataURL;
-    link.download = 'tier_list.png';
+    const safeTitle = title.replace(/[^a-z0-9_\-]+/gi, "_");
+    link.download = `${safeTitle}.png`;
     link.click();
 
 
