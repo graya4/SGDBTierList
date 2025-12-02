@@ -11,6 +11,7 @@ API_KEY = api_file.readline().strip()
 CLIENT_ID = api_file.readline().strip()
 SECRET = api_file.readline().strip()
 STEAM_KEY = api_file.readline().strip()
+VNDB_API_KEY = api_file.readline().strip()
 
 app = Flask(__name__)
 steam = Steam(STEAM_KEY)
@@ -41,6 +42,36 @@ headers = {
 headers_sgdb = {
     'Authorization': f'Bearer {API_KEY}'
 }
+
+headers_vndb = {
+    'Authorization' : f'token {VNDB_API_KEY}',
+    'Content-Type': 'application/json'
+}
+
+#VNDB API CALLS
+def search_game_vndb(query):
+    url = 'https://api.vndb.org/kana/vn'
+    payload = {
+        "filters": ["search", "=", query],  # text search
+        "fields": "id,title,alttitle,released,description,image.url"
+    }
+
+    response = requests.post(url, headers=headers_vndb, json=payload)
+    response.raise_for_status()
+    return response.json()
+
+def get_vn_covers(vn_ids):
+    url = "https://api.vndb.org/kana/vn"
+    payload = {
+        "filters": ["id", "=", vn_ids],    # multiple IDs allowed
+        "fields": "id, title, image.url, image.sexual, image.violence",
+    }
+
+    response = requests.post(url, headers=headers_vndb, json=payload)
+    response.raise_for_status()
+
+    data = response.json()
+    return data.get("results", [])
 
 #IGDB API CALLS
 
@@ -117,6 +148,19 @@ def submit():
     except:
         pass
     
+
+    #VNDB Search
+    game_vndb = search_game_vndb(user_input)['results']
+    #print(game_vndb)
+    try:
+        for x in game_vndb:
+            vndb_name = x['title']
+            vn_cover = x['image']['url']
+            boxarts.append([vn_cover, vndb_name])
+
+    except:
+        pass
+
     #IGDB Search
     for x in game_igdb:
         try:
