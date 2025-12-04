@@ -331,16 +331,21 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     return width;
   };
 
-    const measureMaxHeight = (container) => {
-    const temp = container.cloneNode(true);
+  function getRenderedTierHeight(tierListClone) {
+    const temp = tierListClone.cloneNode(true);
     temp.style.position = 'absolute';
     temp.style.visibility = 'hidden';
-    temp.style.whiteSpace = 'nowrap';
+    temp.style.pointerEvents = 'none';
+    temp.style.left = '-9999px';
+    temp.style.top = '-9999px';
+
     document.body.appendChild(temp);
     const height = temp.offsetHeight;
     document.body.removeChild(temp);
+
     return height;
-  };
+  }
+
   if (document.getElementById('showTextToggle').value === '0') {
     const tierWidth = measureMaxWidth(tierListElement);
     tierListClone.style.width = `${tierWidth}px`;
@@ -357,7 +362,6 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     const tempColumnWrapper = document.createElement('div');
     tempColumnWrapper.style.position = 'absolute';
     tempColumnWrapper.style.visibility = 'hidden';
-    tempColumnWrapper.style.width = '400px';
     tempColumnWrapper.style.font = window.getComputedStyle(gameTitleContainer).font;
     titleTextNodes.forEach(node => {
       const clone = node.cloneNode(true);
@@ -365,8 +369,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     });
     document.body.appendChild(tempColumnWrapper);
 
-    const tierHeight = measureMaxHeight(tierListClone) - 5;
-    
+    const tierHeight = getRenderedTierHeight(tierListClone);
 
     columnizedTitleContainer = document.createElement('div');
     columnizedTitleContainer.style.display = 'flex';
@@ -388,7 +391,8 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     titleTextNodes.forEach(node => {
       console.log("CURRENT HEIGHT: " + currentHeight)
       console.log("TIER HEIGHT: " + tierHeight)
-      console.log("NODE: " + node)
+      console.log(node.textContent)
+      console.log(node.offsetHeight)
       const clone = node.cloneNode(true);
       tempColumnWrapper.appendChild(clone);
       let nodeHeight = clone.offsetHeight;
@@ -397,10 +401,10 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
       console.log('----')
 
       if (nodeHeight === 0){
-        //nodeHeight = oldNodeHeight
+        nodeHeight = oldNodeHeight * 0.6
       }
 
-    if (currentHeight + nodeHeight > tierHeight - 5) {
+    if (currentHeight + nodeHeight > tierHeight) {
       currentColumn = document.createElement('div');
       currentColumn.style.display = 'flex';
       currentColumn.style.flexDirection = 'column';
@@ -426,8 +430,6 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
       el.remove(); // strip them out entirely
     });
   }
-
-  
 
   // Container for rendering
   // OUTER CONTAINER — vertical layout (title on its own row)
