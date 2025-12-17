@@ -516,17 +516,6 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
 });
 
 
-
-
-  
-  
-
-function handleTextEdit(titleElement, image) {
-  // Update the alt text of the image with the new text
-  const newAltText = titleElement.textContent;
-  image.alt = newAltText;
-}
-
 const createTier = (label = "Change me") => {
   const tierColor = colors[tiersContainer.children.length % colors.length];
 

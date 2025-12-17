@@ -605,6 +605,8 @@ function updateAltTextColorAndOrder() {
         titleElement.style.whiteSpace = 'nowrap';
         titleElement.style.lineHeight = '1.3';
 
+        bindAltTextSync(titleElement, image);
+
         // Ensure dataset exists
         if (!image.dataset.hours) image.dataset.hours = "0";
         if (!image.dataset.minutes) image.dataset.minutes = "0";
@@ -743,15 +745,22 @@ function calculateTotalPlaytime() {
   }
 }
 
+function bindAltTextSync(titleElement, image) {
+  // Ensure initial sync
+  image.alt = titleElement.textContent.trim();
 
+  // Live update while typing
+  titleElement.addEventListener('input', () => {
+    image.alt = titleElement.textContent.trim();
+  });
 
-
-
-function handleTextEdit(titleElement, image) {
-    // Update the alt text of the image with the new text
-    const newAltText = titleElement.textContent;
-    image.alt = newAltText;
+  // Cleanup pasted HTML / newlines
+  titleElement.addEventListener('blur', () => {
+    titleElement.textContent = titleElement.textContent.replace(/\s+/g, ' ').trim();
+    image.alt = titleElement.textContent;
+  });
 }
+
 
 function makeImagesDraggable() {
     const images = document.querySelectorAll('.scroll-container img');
