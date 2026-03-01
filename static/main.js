@@ -347,11 +347,15 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
   }
 
   if (document.getElementById('showTextToggle').value === '0') {
-    const tierWidth = measureMaxWidth(tierListElement);
+    let tierWidth = measureMaxWidth(tierListElement);
     tierListClone.style.width = `${tierWidth}px`;
   }
   else {
-    const tierWidth = measureMaxWidth(tierListElement) * 0.7;
+    let tierWidth = measureMaxWidth(tierListElement) * 0.7;
+    console.log("TIER WIDTH: " + tierWidth);
+    if (tierWidth < 458){
+      tierWidth = 458
+    }
     tierListClone.style.width = `${tierWidth}px`;
   }
 
@@ -389,16 +393,16 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     let currentHeight = 0;
     let oldNodeHeight;
     titleTextNodes.forEach(node => {
-      console.log("CURRENT HEIGHT: " + currentHeight)
+      /*console.log("CURRENT HEIGHT: " + currentHeight)
       console.log("TIER HEIGHT: " + tierHeight)
       console.log(node.textContent)
-      console.log(node.offsetHeight)
+      console.log(node.offsetHeight)*/
       const clone = node.cloneNode(true);
       tempColumnWrapper.appendChild(clone);
       let nodeHeight = clone.offsetHeight;
       tempColumnWrapper.removeChild(clone);
-      console.log("NODE HEIGHT: " + nodeHeight)
-      console.log('----')
+      //console.log("NODE HEIGHT: " + nodeHeight)
+      //console.log('----')
 
       if (nodeHeight === 0){
         nodeHeight = oldNodeHeight * 0.6
