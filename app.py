@@ -1,3 +1,5 @@
+from urllib import response
+
 import requests
 from static import TheRoulette
 from flask import Flask, request, jsonify, render_template, send_file
@@ -18,7 +20,21 @@ steam = Steam(STEAM_KEY)
 CORS(app)
 
 
+def get_steam_info(appid):
+    steam_payload = {
+        "input_json": {
+            "ids": [{"appid": appid}],
+            "data_request": {"include_basic_info": True, "include_assets": True}
+        }
+    }
 
+    r = requests.post(
+        "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/",
+        params={"key": STEAM_KEY},
+        json=steam_payload
+    )
+    print(r)
+    return r.json()
 
 # Function to get OAuth token for IGDB
 def get_igdb_access_token():
@@ -126,7 +142,11 @@ def submit():
         user = steam.apps.search_games(user_input)
         found_games = user['apps']
         for x in found_games:
+            print(x)
             gameid = x['id'][0]
+            print(gameid)
+            print(get_steam_info(440))
+            print(get_steam_info(gameid))
             artlink = "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/library_600x900_2x.jpg".format(gameid)
             #print(steam.apps.get_app_details(gameid)[str(gameid)]['data'])
             if steam.apps.get_app_details(gameid)[str(gameid)]['data']['type'] == "game" and requests.get(artlink).status_code != 404:
@@ -163,12 +183,13 @@ def submit():
 
     #IGDB Search
     for x in game_igdb:
+        print(x)
         try:
             igdb_name = x['name']
             game_id = x['id']
             game_covers = get_game_covers([game_id])
             cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x').replace('//', 'https://')
-            if len(boxarts) < 50:
+            if len(boxarts) < 100:
                 boxarts.append([cover_url, igdb_name])
         except (IndexError, KeyError):
             continue

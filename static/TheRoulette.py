@@ -21,8 +21,8 @@ def roulette(inserted_json):
 
         for i, tier in enumerate(fulljson):
             if i == 0:
-                # First tier boosted by 25%
-                weight = 0.999999999 * math.exp(-decay_factor * i)
+                # First tier gets a slightly higher weight
+                weight = 1.50  * math.exp(-decay_factor * i)
             else:
                 # Subsequent tiers use normal decay
                 weight = math.exp(-decay_factor * i)
@@ -144,6 +144,7 @@ def roulettescript(inserted_json):
 
     # ✅ Save canvas into memory buffer
     buffer = BytesIO()
+    
     canvas.save(buffer, format="PNG")
     buffer.seek(0)
 
