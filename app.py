@@ -7,6 +7,7 @@ from flask_cors import CORS
 from io import BytesIO
 from steam_web_api import Steam
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 api_file = open('API_KEY.txt')
 API_KEY = api_file.readline().strip()
@@ -63,6 +64,8 @@ headers_vndb = {
     'Authorization' : f'token {VNDB_API_KEY}',
     'Content-Type': 'application/json'
 }
+
+
 
 #VNDB API CALLS
 def search_game_vndb(query):
@@ -124,6 +127,148 @@ def get_game_grids_sgdb(game_id):
     else:
         return f"Error: {response.status_code}"
 
+
+def steam_search(user_input):
+    boxarts = []
+
+    try:
+        user = steam.apps.search_games(user_input)
+        found_games = user['apps']
+
+        def process_game(x):
+            try:
+                gameid = x['id'][0]
+
+                artlink = (
+                    f"https://cdn.cloudflare.steamstatic.com/"
+                    f"steam/apps/{gameid}/library_600x900_2x.jpg"
+                )
+
+                details = steam.apps.get_app_details(gameid)
+
+                if (
+                    details[str(gameid)]['data']['type'] == "game"
+                    and requests.get(artlink, timeout=5).status_code != 404
+                ):
+                    return [artlink, x['name']]
+            except Exception:
+                pass
+
+            return None
+
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            futures = [pool.submit(process_game, x) for x in found_games]
+
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    boxarts.append(result)
+
+    except Exception:
+        pass
+
+    return boxarts
+
+def sgdb_search(user_input):
+    boxarts = []
+
+    try:
+        games = search_game_sgdb(user_input)['data']
+
+        def process_game(game):
+            results = []
+
+            try:
+                grids = get_game_grids_sgdb(game['id'])['data']
+
+                for grid in grids:
+                    if grid['width'] == 600 and grid['height'] == 900:
+                        results.append([grid['url'], game['name']])
+
+            except Exception:
+                pass
+
+            return results
+
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            futures = [pool.submit(process_game, game) for game in games]
+
+            for future in as_completed(futures):
+                boxarts.extend(future.result())
+
+    except Exception:
+        pass
+
+    search_term = user_input.lower().strip()
+
+    boxarts.sort(
+        key=lambda x: (
+            x[1].lower() != search_term,  # exact match first
+            x[1].lower()                  # then alphabetical
+        )
+    )
+
+    return boxarts
+
+def igdb_search_boxarts(user_input):
+    boxarts = []
+
+    try:
+        games = search_game_igdb(user_input)
+
+        def process_game(game):
+            try:
+                covers = get_game_covers([game['id']])
+
+                if not covers:
+                    return None
+
+                return [
+                    covers[0]['url']
+                    .replace('t_thumb', 't_cover_big_2x')
+                    .replace('//', 'https://'),
+                    game['name']
+                ]
+
+            except Exception:
+                return None
+
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            futures = [pool.submit(process_game, game) for game in games]
+
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    boxarts.append(result)
+
+    except Exception:
+        pass
+
+    return boxarts
+
+def vndb_search_boxarts(user_input):
+    boxarts = []
+
+    try:
+        games = search_game_vndb(user_input)['results']
+
+        for game in games:
+            try:
+                boxarts.append([
+                    game['image']['url'],
+                    game['title']
+                ])
+            except (KeyError, TypeError):
+                continue
+
+    except Exception:
+        pass
+
+    return boxarts
+
+
+
+
 # Route for serving the HTML file
 @app.route('/')
 def home():
@@ -135,66 +280,24 @@ def submit():
     user_input = request.form['searchbar']
     user_input = str(user_input)
     boxarts = []
-    game_igdb = search_game_igdb(user_input)
     
-    #Official Steam Cover Search
-    try:
-        user = steam.apps.search_games(user_input)
-        found_games = user['apps']
-        for x in found_games:
-            print(x)
-            gameid = x['id'][0]
-            print(gameid)
-            print(get_steam_info(440))
-            print(get_steam_info(gameid))
-            artlink = "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/library_600x900_2x.jpg".format(gameid)
-            #print(steam.apps.get_app_details(gameid)[str(gameid)]['data'])
-            if steam.apps.get_app_details(gameid)[str(gameid)]['data']['type'] == "game" and requests.get(artlink).status_code != 404:
-                #print(artlink)
-                boxarts.append([artlink, x['name']])
-    except:
-        pass
-    
-    #SGDB Search
-    game = search_game_sgdb(user_input)['data']
-    try:
-        for x in game:
-            current_grids = get_game_grids_sgdb(x['id'])['data']
-            game_name = x['name']
-            #print(game_name)
-            for y in current_grids:
-                if y['width'] == 600 and y['height'] == 900 and len(boxarts) < 100:
-                    boxarts.append([y['url'], game_name])
-    except:
-        pass
-    
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        steam_future = pool.submit(steam_search, user_input)
+        sgdb_future = pool.submit(sgdb_search, user_input)
+        vndb_future = pool.submit(vndb_search_boxarts, user_input)
+        igdb_future = pool.submit(igdb_search_boxarts, user_input)
 
-    #VNDB Search
-    game_vndb = search_game_vndb(user_input)['results']
-    #print(game_vndb)
-    try:
-        for x in game_vndb:
-            vndb_name = x['title']
-            vn_cover = x['image']['url']
-            boxarts.append([vn_cover, vndb_name])
+    boxarts = []
 
-    except:
-        pass
+    boxarts.extend(steam_future.result())  # always first
+    boxarts.extend(sgdb_future.result())   # always second
+    boxarts.extend(vndb_future.result())   # always third
+    boxarts.extend(igdb_future.result())   # always last      
 
-    #IGDB Search
-    for x in game_igdb:
-        print(x)
-        try:
-            igdb_name = x['name']
-            game_id = x['id']
-            game_covers = get_game_covers([game_id])
-            cover_url = game_covers[0]['url'].replace('t_thumb', 't_cover_big_2x').replace('//', 'https://')
-            if len(boxarts) < 100:
-                boxarts.append([cover_url, igdb_name])
-        except (IndexError, KeyError):
-            continue
-
-    return jsonify({'response': f"{len(boxarts)} boxart(s).", 'boxarts': boxarts})
+    return jsonify({
+        'response': f"{len(boxarts)} boxart(s).",
+        'boxarts': boxarts[:100]
+    })
 
 # Proxy route for handling CORS issues
 @app.route('/proxy')

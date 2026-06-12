@@ -351,7 +351,7 @@ document.getElementById('saveAsPngButton').addEventListener('click', () => {
     tierListClone.style.width = `${tierWidth}px`;
   }
   else {
-    let tierWidth = measureMaxWidth(tierListElement) * 0.7;
+    let tierWidth = measureMaxWidth(tierListElement) * 0.75;
     console.log("TIER WIDTH: " + tierWidth);
     if (tierWidth < 458){
       tierWidth = 458
