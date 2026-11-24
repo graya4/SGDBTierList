@@ -3,10 +3,35 @@ import os
 import json
 import ast
 import math
-from PIL import Image, ImageDraw, ImageFont
-import requests
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps
 from io import BytesIO
 from datetime import datetime
+
+import image_fetch
+
+COVER_SIZE = (600, 900)      # slot reserved for the box art in the roulette card
+COVER_CROP_TOLERANCE = 0.08  # aspect mismatch (8%) still filled edge-to-edge by cropping
+
+
+def fit_cover(img, size=COVER_SIZE):
+    """Fit any image into `size` without distorting it.
+
+    Near-2:3 art is scaled to fill and trimmed slightly (like CSS object-fit: cover).
+    Anything further off (wide headers, square art, tall scans) is scaled to fit whole
+    and centered over a blurred, darkened copy of itself so the frame stays filled."""
+    tw, th = size
+    target = tw / th
+    aspect = img.width / img.height
+    if abs(aspect / target - 1) <= COVER_CROP_TOLERANCE:
+        return ImageOps.fit(img, size, Image.LANCZOS)
+
+    backdrop = ImageOps.fit(img, size, Image.LANCZOS)
+    backdrop = backdrop.filter(ImageFilter.GaussianBlur(radius=max(tw, th) // 30))
+    backdrop = ImageEnhance.Brightness(backdrop).enhance(0.45)
+
+    foreground = ImageOps.contain(img, size, Image.LANCZOS)
+    backdrop.paste(foreground, ((tw - foreground.width) // 2, (th - foreground.height) // 2))
+    return backdrop
 
 
 DECAY_FACTOR = 0.65
@@ -130,8 +155,13 @@ def roulettescript(inserted_json):
 
     ## VISUAL ##
     # Load image from URL
-    response = requests.get(game_image)
-    box_image = Image.open(BytesIO(response.content)).convert("RGB")
+    try:
+        data, _ = image_fetch.fetch_image(game_image)  # cached, retried, proxy-unwrapped
+        source = Image.open(BytesIO(data)).convert("RGB")
+    except Exception as e:
+        print(f"Roulette: failed to load {game_image}: {e}")
+        source = Image.new("RGB", COVER_SIZE, "#333333")
+    box_image = fit_cover(source, COVER_SIZE)
 
     # Scale factor
     scale = 2
