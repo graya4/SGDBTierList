@@ -9,33 +9,86 @@ from io import BytesIO
 from datetime import datetime
 
 
+DECAY_FACTOR = 0.65
+FIRST_TIER_BONUS = 1.50
+# How much a tier's game count grows its share of rolls: 1.0 = linear (a big tier
+# swamps a small tier above it), 0.0 = ignore size.
+SIZE_EXPONENT = 0.55
+# Guardrails vs the nearest non-empty tier above (strict, so tiers never tie):
+MIN_GAME_DROP = 0.80   # a game's chance is at most 80% of a game's chance one tier up
+MIN_TIER_DROP = 0.90   # a tier's share of rolls is at most 90% of the tier above
+
+
+def tier_weight(index):
+    """Base weight for the tier at this position (0 = top tier)."""
+    weight = math.exp(-DECAY_FACTOR * index)
+    if index == 0:
+        weight *= FIRST_TIER_BONUS  # first tier gets a higher weight
+    return weight
+
+
+def per_game_weights(counts):
+    """Unnormalised pick weight for one game in each tier.
+
+    A tier's total share is tier_weight * count^SIZE_EXPONENT, so stuffing a lower
+    tier with games can't make it outdraw the tiers above. Then, top-down, each tier
+    is clamped so its per-game chance and its total share both stay strictly below
+    the nearest non-empty tier above it (see MIN_GAME_DROP / MIN_TIER_DROP)."""
+    weights = [tier_weight(i) * n ** SIZE_EXPONENT / n if n else 0.0
+               for i, n in enumerate(counts)]
+    prev = None
+    for i, n in enumerate(counts):
+        if not n:
+            continue
+        if prev is not None:
+            prev_w, prev_n = prev
+            weights[i] = min(weights[i],
+                             prev_w * MIN_GAME_DROP,
+                             prev_w * prev_n * MIN_TIER_DROP / n)
+        prev = (weights[i], n)
+    return weights
+
+
+def compute_odds(tiers):
+    """Chance of the roulette picking each tier / each game in it.
+    tiers: [{tier, color, images:[...]}] -> list of dicts, same order."""
+    counts = [len(t.get("images") or []) for t in tiers]
+    weights = per_game_weights(counts)
+    total = sum(w * n for w, n in zip(weights, counts))
+    odds = []
+    for t, n, w in zip(tiers, counts, weights):
+        per_game = w / total if total and n else 0.0
+        odds.append({
+            "tier": str(t.get("tier", "")).strip(),
+            "color": t.get("color") or "#FFFFFF",
+            "count": n,
+            "perGame": per_game,
+            "tierTotal": per_game * n,
+        })
+    return odds
+
+
 def roulette(inserted_json):
     game_list = []
     game_image_list = []
     weight_list = []
     tier_info_list = []
-    decay_factor = 0.7777777
 
     with open("tierlist.json", "r", encoding="utf-8") as f:
         fulljson = json.load(f)
 
-        for i, tier in enumerate(fulljson):
-            if i == 0:
-                # First tier gets a slightly higher weight
-                weight = 1.50  * math.exp(-decay_factor * i)
-            else:
-                # Subsequent tiers use normal decay
-                weight = math.exp(-decay_factor * i)
+    # Same odds the Roulette tab shows
+    odds = compute_odds(fulljson)
+    for tier, tier_odds in zip(fulljson, odds):
+        for game in tier["images"]:
+            game_list.append(game['alt'])
+            game_image_list.append(game['src'])
+            weight_list.append(tier_odds["perGame"])
+            tier_info_list.append((tier['tier'], tier['color']))
 
-            for game in tier["images"]:
-                game_list.append(game['alt'])
-                game_image_list.append(game['src'])
-                weight_list.append(weight)
-                tier_info_list.append((tier['tier'], tier['color']))
-
-    # Random selection based on weights
-    selected_name = random.choices(game_list, weights=weight_list, k=1)[0]
-    selected_index = game_list.index(selected_name)
+    # Pick by index so duplicate titles can't resolve to the wrong entry
+    selected_index = random.choices(range(len(game_list)), weights=weight_list, k=1)[0]
+    selected_name = game_list[selected_index]
     selected_image = game_image_list[selected_index]
     selected_tier, selected_color = tier_info_list[selected_index]
 

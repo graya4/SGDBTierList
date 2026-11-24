@@ -154,6 +154,7 @@ function saveTierList() {
 
 function loadTierList(event) {
   const file = event.target.files[0];
+  event.target.value = '';  // allow re-loading the same file
   if (!file) return;
 
   const reader = new FileReader();
@@ -184,10 +185,12 @@ function loadTierList(event) {
               const label = tier.querySelector('.label');
               label.style.setProperty('--color', tierColor);
 
-              data.images.forEach(imageData => {
+              const fragment = document.createDocumentFragment();
+              (data.images || []).forEach(imageData => {
+                if (!imageData || !imageData.src) return;
                 const imgElement = document.createElement('img');
-                imgElement.src = imageData.src;
-                imgElement.alt = imageData.alt;
+                imgElement.alt = imageData.alt || '';
+                imgElement.decoding = 'async';
 
                 // Restore playtime from JSON
                 imgElement.dataset.hours = imageData.hours || "0";
@@ -199,8 +202,11 @@ function loadTierList(event) {
                 imgElement.addEventListener('dragstart', handleDragStart);
                 imgElement.addEventListener('dragend', handleDragEnd);
                 imgElement.addEventListener('dblclick', handleImageRemove);
-                itemsContainer.appendChild(imgElement);
+                window.attachImageRetry?.(imgElement);  // retry transient failures
+                imgElement.src = imageData.src;           // set last so error handler is ready
+                fragment.appendChild(imgElement);
               });
+              itemsContainer.appendChild(fragment);
 
 
                 tiersContainer.appendChild(tier);
@@ -314,12 +320,9 @@ document.getElementById('proxyServerButton').addEventListener('click', () => {
 document.getElementById('saveButton').addEventListener('click', saveTierList);
 document.getElementById('loadButton').addEventListener('change', loadTierList);
 
-// Render the PNG on the server so browser extensions (injected CSS, dark-mode
+// Render on the server so browser extensions (injected CSS, dark-mode
 // filters, overlays, canvas noise) can't affect the output.
-async function renderTierListPng() {
-  const button = document.getElementById('saveAsPngButton');
-  const title = document.getElementById("tierListTitle").value.trim() || "Tier List";
-
+function buildRenderPayload() {
   const tiers = Array.from(document.querySelectorAll('.tier')).map(tier => ({
     tier: tier.querySelector('.label span').textContent,
     color: getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color').trim(),
@@ -332,13 +335,68 @@ async function renderTierListPng() {
     }))
   }));
 
-  const payload = {
-    title,
+  return {
+    title: document.getElementById("tierListTitle").value.trim() || "Tier List",
+    format: document.getElementById("imageFormat")?.value || "png",
     scale: parseFloat(document.getElementById("quality").value) || 2,
     showText: parseInt(document.getElementById("showTextToggle").value || "1"),
     showPlaytimes: parseInt(document.getElementById("showPlaytimeToggle").value || "1"),
+    showOdds: parseInt(document.getElementById("showOddsToggle")?.value || "0"),
     tiers
   };
+}
+
+// ---- Roulette odds (same weights the server uses to pick) ----
+let oddsSeq = 0;
+
+async function updateRouletteOdds() {
+  const table = document.getElementById('rouletteOddsTable');
+  const empty = document.getElementById('rouletteOddsEmpty');
+  if (!table) return;
+  const tiers = buildRenderPayload().tiers.map(t => ({ tier: t.tier, color: t.color, images: t.images }));
+  const seq = ++oddsSeq;
+  try {
+    const response = await fetch('/roulette_odds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tiers })
+    });
+    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+    const { odds } = await response.json();
+    if (seq !== oddsSeq) return;
+
+    const hasGames = odds.some(o => o.count > 0);
+    table.style.display = hasGames ? '' : 'none';
+    empty.style.display = hasGames ? 'none' : '';
+
+    const tbody = table.querySelector('tbody');
+    tbody.replaceChildren(...odds.map(o => {
+      const tr = document.createElement('tr');
+      if (!o.count) tr.className = 'empty';
+      tr.style.setProperty('--tier-color', o.color);
+      const cells = [
+        o.tier || '(unnamed)',
+        String(o.count),
+        o.count ? `${(o.perGame * 100).toFixed(2)}%` : '—',
+        o.count ? `${(o.tierTotal * 100).toFixed(1)}%` : '—'
+      ];
+      cells.forEach(text => {
+        const td = document.createElement('td');
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      return tr;
+    }));
+  } catch (error) {
+    if (seq === oddsSeq) console.error('Odds update failed:', error);
+  }
+}
+
+const EXTENSIONS = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
+
+async function renderTierListImage() {
+  const button = document.getElementById('saveAsPngButton');
+  const payload = buildRenderPayload();
 
   const originalLabel = button.textContent;
   button.disabled = true;
@@ -352,24 +410,79 @@ async function renderTierListPng() {
     if (!response.ok) throw new Error(`Server returned ${response.status}`);
 
     const blob = await response.blob();
+    // Use the type the server actually produced (WebP falls back to PNG when too large)
+    const extension = EXTENSIONS[blob.type] || 'png';
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${title.replace(/[^a-z0-9_\-]+/gi, "_")}.png`;
+    link.download = `${payload.title.replace(/[^a-z0-9_\-]+/gi, "_")}.${extension}`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (error) {
-    console.error('Failed to render PNG:', error);
-    alert('Failed to render the PNG. Check the server console for details.');
+    console.error('Failed to render image:', error);
+    alert('Failed to render the image. Check the server console for details.');
   } finally {
     button.disabled = false;
     button.textContent = originalLabel;
   }
 }
 
-document.getElementById('saveAsPngButton').addEventListener('click', renderTierListPng);
+// ---- Predicted output size (layout-only estimate from the server) ----
+function formatBytes(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+let estimateTimer = null;
+let estimateSeq = 0;
+
+async function updateRenderEstimate() {
+  const el = document.getElementById('renderEstimate');
+  if (!el) return;
+  const payload = buildRenderPayload();
+  if (!payload.tiers.some(t => t.images.length)) {
+    el.textContent = 'Estimated size: add some games first';
+    return;
+  }
+  const seq = ++estimateSeq;
+  try {
+    const response = await fetch('/render_estimate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+    const est = await response.json();
+    if (seq !== estimateSeq) return;  // a newer request superseded this one
+    const requested = payload.format === 'jpeg' ? 'jpg' : payload.format;
+    const fallback = est.format !== requested ? ` (too large for ${requested.toUpperCase()}, will be ${est.format.toUpperCase()})` : '';
+    el.textContent = `Estimated size: ~${formatBytes(est.bytes)} · ${est.width} × ${est.height} px${fallback}`;
+  } catch (error) {
+    if (seq === estimateSeq) el.textContent = 'Estimated size: unavailable';
+    console.error('Estimate failed:', error);
+  }
+}
+
+// Called whenever the list or render options change; refreshes both the size
+// estimate and the roulette odds table.
+function scheduleRenderEstimate() {
+  clearTimeout(estimateTimer);
+  estimateTimer = setTimeout(() => {
+    updateRenderEstimate();
+    updateRouletteOdds();
+  }, 400);
+}
+window.scheduleRenderEstimate = scheduleRenderEstimate;
+
+['quality', 'imageFormat', 'showTextToggle', 'showPlaytimeToggle', 'showOddsToggle'].forEach(id =>
+  document.getElementById(id)?.addEventListener('change', scheduleRenderEstimate));
+document.getElementById('tierListTitle')?.addEventListener('input', scheduleRenderEstimate);
+document.querySelector('.tab[data-tab="tab3"]')?.addEventListener('click', scheduleRenderEstimate);
+document.querySelector('.tab[data-tab="tab4"]')?.addEventListener('click', scheduleRenderEstimate);
+
+document.getElementById('saveAsPngButton').addEventListener('click', renderTierListImage);
 
 
 const createTier = (label = "Change me") => {

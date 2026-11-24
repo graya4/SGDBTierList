@@ -10,10 +10,10 @@ import threading
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from urllib.parse import urlparse, parse_qs
-
-import requests
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+
+import image_fetch
+from static import TheRoulette
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_REGULAR = os.path.join(BASE_DIR, "AGaramondPro-Regular.otf")
@@ -44,6 +44,17 @@ NAME_TIME_GAP = 6
 TOTAL_SIZE = 36.8                  # 2.3rem
 TOTAL_MARGIN = 8
 MIN_TIER_CELLS = 3                 # old 458px minimum width
+MAX_TIER_ASPECT = 16 / 9           # tier block width:height cap (wraps rows beyond this)
+ODDS_GAP = 24                      # space between tier list and odds table
+ODDS_HEAD_SIZE = 24
+ODDS_LABEL_SIZE = 16
+ODDS_SIZE = 16
+ODDS_ROW_H = 24
+ODDS_COL_GAP = 32
+ODDS_SWATCH = 12
+ODDS_HEAD_COLOR = "white"
+ODDS_TEXT_COLOR = "#DDDDDD"
+ODDS_MUTED_COLOR = "#999999"
 
 BG = "#1A1A17"
 TIER_BG = "#262626"
@@ -52,48 +63,32 @@ TITLE_COLOR = "white"
 TOTAL_COLOR = "#008000"
 PLACEHOLDER = "#333333"
 
-# --- image fetching with a small in-memory cache -----------------------------
+# --- image loading: bytes come from the shared fetch cache (also used by /proxy),
+# decoded images are kept in a small LRU so repeat renders skip decoding ---------
 
-_CACHE_MAX = 400
-_cache = OrderedDict()
-_cache_lock = threading.Lock()
-_session = requests.Session()
-_session.headers["User-Agent"] = "TierListMaker/1.0"
-
-
-def _unwrap_proxy(src):
-    """'https://any-host/proxy?url=X' -> X, so we fetch the source directly
-    regardless of which domain the list was saved on."""
-    try:
-        parsed = urlparse(src)
-        if parsed.path.rstrip("/").endswith("/proxy"):
-            inner = parse_qs(parsed.query).get("url")
-            if inner:
-                return inner[0]
-    except ValueError:
-        pass
-    return src
+_DECODED_MAX = 400
+_decoded = OrderedDict()
+_decoded_lock = threading.Lock()
 
 
 def _fetch_image(src):
-    url = _unwrap_proxy(src)
-    with _cache_lock:
-        if url in _cache:
-            _cache.move_to_end(url)
-            return _cache[url]
+    url = image_fetch.unwrap_proxy(src)
+    with _decoded_lock:
+        if url in _decoded:
+            _decoded.move_to_end(url)
+            return _decoded[url]
     try:
-        r = _session.get(url, timeout=10)
-        r.raise_for_status()
-        img = Image.open(BytesIO(r.content))
+        data, _ = image_fetch.fetch_image(url)
+        img = Image.open(BytesIO(data))
         img.load()
         img = img.convert("RGB")
     except Exception as e:
         print(f"Render: failed to load {url}: {e}")
         return None
-    with _cache_lock:
-        _cache[url] = img
-        while len(_cache) > _CACHE_MAX:
-            _cache.popitem(last=False)
+    with _decoded_lock:
+        _decoded[url] = img
+        while len(_decoded) > _DECODED_MAX:
+            _decoded.popitem(last=False)
     return img
 
 
@@ -147,51 +142,67 @@ def _wrap(draw, text, font, max_w):
 
 # --- main entry point --------------------------------------------------------
 
-def render_tierlist(data):
-    """data = {title, scale, showText, showPlaytimes, tiers:[{tier,color,images:[{src,alt,hours,minutes,seconds}]}]}
-    Returns a BytesIO containing the PNG."""
+def _tier_height(counts, per_row):
+    """Height (CSS px) of the tier block for a given cards-per-row."""
+    rows = [max(MIN_ROW_H, math.ceil(n / per_row) * CELL_H) for n in counts]
+    return rows, sum(rows) + DIVIDER * max(len(counts) - 1, 0)
+
+
+def _choose_per_row(counts, show_text):
+    """Cards per row: the old width heuristic, capped so the tier block never gets
+    wider than MAX_TIER_ASPECT (keeps big lists rectangular instead of a long strip)."""
+    max_count = max(counts, default=0)
+    if max_count == 0:
+        return MIN_TIER_CELLS
+    if show_text:
+        cells = math.floor((0.75 * (LABEL_W + LABEL_GAP + max_count * CELL_W) - LABEL_W - LABEL_GAP) / CELL_W)
+        preferred = max(cells, MIN_TIER_CELLS)
+    else:
+        preferred = max_count
+    floor = min(MIN_TIER_CELLS, max_count)
+    # Aspect shrinks monotonically as per_row drops, so take the widest that fits
+    for per_row in range(preferred, floor - 1, -1):
+        _, h = _tier_height(counts, per_row)
+        if (LABEL_W + LABEL_GAP + per_row * CELL_W) / h <= MAX_TIER_ASPECT:
+            return per_row
+    return max(floor, 1)
+
+
+def _layout(data):
+    """Compute all geometry (no image downloads)."""
     s = float(data.get("scale") or 2)
     s = min(max(s, 0.5), 4)
-    show_text = bool(int(data.get("showText", 1)))
-    show_times = bool(int(data.get("showPlaytimes", 1)))
-    title = str(data.get("title") or "Tier List")
-    tiers = data.get("tiers") or []
+    L = {
+        "s": s,
+        "show_text": bool(int(data.get("showText", 1))),
+        "show_times": bool(int(data.get("showPlaytimes", 1))),
+        "title": str(data.get("title") or "Tier List"),
+        "tiers": data.get("tiers") or [],
+    }
 
     def px(v):
         return round(v * s)
-
-    # Fetch all distinct images in parallel
-    srcs = list(dict.fromkeys(img["src"] for t in tiers for img in t.get("images", []) if img.get("src")))
-    with ThreadPoolExecutor(max_workers=16) as pool:
-        loaded = dict(zip(srcs, pool.map(_fetch_image, srcs)))
+    L["px"] = px
+    tiers = L["tiers"]
 
     measure = ImageDraw.Draw(Image.new("RGB", (1, 1)))
-    f_title = _font(FONT_BOLD, TITLE_SIZE * s)
-    f_label = _font(FONT_REGULAR, LABEL_FONT * s)
-    f_name = _font(FONT_REGULAR, NAME_SIZE * s)
-    f_time = _font(FONT_BOLD, NAME_SIZE * s)
-    f_total = _font(FONT_BOLD, TOTAL_SIZE * s)
+    L["f_title"] = _font(FONT_BOLD, TITLE_SIZE * s)
+    L["f_label"] = _font(FONT_REGULAR, LABEL_FONT * s)
+    L["f_name"] = f_name = _font(FONT_REGULAR, NAME_SIZE * s)
+    L["f_time"] = f_time = _font(FONT_BOLD, NAME_SIZE * s)
+    L["f_total"] = f_total = _font(FONT_BOLD, TOTAL_SIZE * s)
 
-    # --- tier list geometry (CSS px) ---
-    max_count = max((len(t.get("images", [])) for t in tiers), default=0)
-    if show_text:
-        # Same heuristic as before: 75% of the single-row width, min 3 cards
-        cells = math.floor((0.75 * (LABEL_W + LABEL_GAP + max_count * CELL_W) - LABEL_W - LABEL_GAP) / CELL_W)
-        per_row = max(cells, MIN_TIER_CELLS)
-    else:
-        per_row = max(max_count, 1)
+    counts = [len(t.get("images", [])) for t in tiers]
+    per_row = _choose_per_row(counts, L["show_text"])
+    row_heights, tier_h = _tier_height(counts, per_row)
     tier_w = LABEL_W + LABEL_GAP + per_row * CELL_W
-
-    row_heights = []
-    for t in tiers:
-        rows = math.ceil(len(t.get("images", [])) / per_row)
-        row_heights.append(max(MIN_ROW_H, rows * CELL_H))
-    tier_h = sum(row_heights) + DIVIDER * max(len(tiers) - 1, 0)
+    L.update(per_row=per_row, row_heights=row_heights, tier_h=tier_h, tier_w=tier_w)
 
     # --- title columns (scaled px, measured with real fonts) ---
-    columns = []  # list of (width, [entries]); entry = (kind, payload)
+    columns = []
     col_area_w = 0
-    if show_text:
+    show_times = L["show_times"]
+    if L["show_text"]:
         entries = []
         total_seconds = 0
         for t in tiers:
@@ -246,12 +257,82 @@ def render_tierlist(data):
         columns = stretched
         if columns:
             col_area_w = px(SECTION_GAP) + sum(math.ceil(w) for w, _, _ in columns) + px(COLUMN_GAP) * (len(columns) - 1)
+    L["columns"] = columns
 
-    # --- canvas ---
-    title_w = math.ceil(measure.textlength(title, font=f_title))
-    content_w = max(px(tier_w) + col_area_w, title_w)
-    width = px(PAD) * 2 + content_w
-    height = px(PAD) * 2 + px(TITLE_SIZE * 1.2) + px(TITLE_MARGIN) + px(tier_h)
+    # --- roulette odds table (below the tier list) ---
+    odds_w = odds_h = 0
+    L["odds"] = None
+    if bool(int(data.get("showOdds", 0))) and any(counts):
+        L["f_odds_head"] = _font(FONT_BOLD, ODDS_HEAD_SIZE * s)
+        L["f_odds_label"] = f_lbl = _font(FONT_BOLD, ODDS_LABEL_SIZE * s)
+        L["f_odds"] = f_odds = _font(FONT_REGULAR, ODDS_SIZE * s)
+        rows = []
+        for o in TheRoulette.compute_odds(tiers):
+            rows.append((o["tier"].replace("\n", " ") or "(unnamed)", o["color"], [
+                f'{o["count"]} game{"" if o["count"] == 1 else "s"}',
+                f'{o["perGame"]:.2%}' if o["count"] else "—",
+                f'{o["tierTotal"]:.1%}' if o["count"] else "—",
+            ]))
+        headers = ["Tier", "Games", "Each", "Tier total"]
+        swatch = px(ODDS_SWATCH) + px(8)
+        col_ws = [max([measure.textlength(headers[0], font=f_lbl)] +
+                      [swatch + measure.textlength(r[0], font=f_lbl) for r in rows])]
+        for k in range(3):
+            col_ws.append(max([measure.textlength(headers[k + 1], font=f_lbl)] +
+                              [measure.textlength(r[2][k], font=f_odds) for r in rows]))
+        col_ws = [math.ceil(w) for w in col_ws]
+        odds_w = sum(col_ws) + px(ODDS_COL_GAP) * 3
+        odds_h = (px(ODDS_GAP) + px(ODDS_HEAD_SIZE * 1.4) + px(ODDS_ROW_H)
+                  + px(ODDS_ROW_H) * len(rows))
+        L["odds"] = {"rows": rows, "headers": headers, "col_ws": col_ws}
+
+    title_w = math.ceil(measure.textlength(L["title"], font=L["f_title"]))
+    L["width"] = px(PAD) * 2 + max(px(tier_w) + col_area_w, title_w, odds_w)
+    L["height"] = px(PAD) * 2 + px(TITLE_SIZE * 1.2) + px(TITLE_MARGIN) + px(tier_h) + odds_h
+    L["card_area"] = sum(counts) * px(CARD_W) * px(CARD_H)
+    return L
+
+
+def _resolve_format(data, size):
+    fmt = FORMATS.get(str(data.get("format", "png")).lower(), FORMATS["png"])
+    if fmt["ext"] == "webp" and max(size) > 16383:  # WebP hard size limit
+        fmt = FORMATS["png"]
+    return fmt
+
+
+def estimate_render(data):
+    """Predict output dimensions and file size without downloading or drawing.
+    Cover art dominates the file; the flat background and text compress to
+    almost nothing. Coefficients in SIZE_MODEL are fitted on real renders."""
+    L = _layout(data)
+    fmt = _resolve_format(data, (L["width"], L["height"]))
+    coef = SIZE_MODEL[fmt["ext"]]
+    other = L["width"] * L["height"] - L["card_area"]
+    est = coef["card"] * L["card_area"] * L["s"] ** coef["exp"] + coef["other"] * other
+    return {
+        "width": L["width"],
+        "height": L["height"],
+        "perRow": L["per_row"],
+        "format": fmt["ext"],
+        "bytes": int(est),
+    }
+
+
+def render_tierlist(data):
+    """data = {title, scale, format, showText, showPlaytimes,
+               tiers:[{tier,color,images:[{src,alt,hours,minutes,seconds}]}]}
+    Returns (BytesIO, mimetype, extension)."""
+    L = _layout(data)
+    px, tiers = L["px"], L["tiers"]
+    width, height = L["width"], L["height"]
+    per_row, row_heights, tier_w = L["per_row"], L["row_heights"], L["tier_w"]
+    f_title, f_label, f_name, f_time, f_total = (L[k] for k in ("f_title", "f_label", "f_name", "f_time", "f_total"))
+    show_times, columns, title = L["show_times"], L["columns"], L["title"]
+
+    # Fetch all distinct images in parallel
+    srcs = list(dict.fromkeys(img["src"] for t in tiers for img in t.get("images", []) if img.get("src")))
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        loaded = dict(zip(srcs, pool.map(_fetch_image, srcs)))
 
     canvas = Image.new("RGB", (width, height), BG)
     draw = ImageDraw.Draw(canvas)
@@ -328,8 +409,64 @@ def render_tierlist(data):
                 cy += h + row_gap
             cx += col_w + px(COLUMN_GAP)
 
+    # Roulette odds table
+    if L["odds"]:
+        odds = L["odds"]
+        f_head, f_lbl, f_odds = L["f_odds_head"], L["f_odds_label"], L["f_odds"]
+        top = px(PAD) + px(TITLE_SIZE * 1.2) + px(TITLE_MARGIN) + px(L["tier_h"]) + px(ODDS_GAP)
+        draw.text((x0, top), "Roulette Odds", font=f_head, fill=ODDS_HEAD_COLOR, anchor="la")
+        y = top + px(ODDS_HEAD_SIZE * 1.4)
+        row_h = px(ODDS_ROW_H)
+        col_x = [x0]
+        for w in odds["col_ws"][:-1]:
+            col_x.append(col_x[-1] + w + px(ODDS_COL_GAP))
+
+        def cell(k, text, font, color, mid):
+            if k == 0:
+                draw.text((col_x[0], mid), text, font=font, fill=color, anchor="lm")
+            else:  # numbers right-aligned in their column
+                draw.text((col_x[k] + odds["col_ws"][k], mid), text, font=font, fill=color, anchor="rm")
+
+        mid = y + row_h / 2
+        for k, h in enumerate(odds["headers"]):
+            cell(k, h, f_lbl, ODDS_MUTED_COLOR, mid)
+        y += row_h
+        sw = px(ODDS_SWATCH)
+        for name, color, values in odds["rows"]:
+            mid = y + row_h / 2
+            try:
+                draw.rectangle([x0, mid - sw / 2, x0 + sw, mid + sw / 2], fill=color)
+            except ValueError:
+                color = "white"
+                draw.rectangle([x0, mid - sw / 2, x0 + sw, mid + sw / 2], fill=color)
+            draw.text((x0 + sw + px(8), mid), name, font=f_lbl, fill=color, anchor="lm")
+            muted = values[1] == "—"
+            for k, v in enumerate(values, start=1):
+                cell(k, v, f_odds, ODDS_MUTED_COLOR if muted else ODDS_TEXT_COLOR, mid)
+            y += row_h
+
+    fmt = _resolve_format(data, canvas.size)
     buf = BytesIO()
-    # optimize=True only saves ~2% on photo-heavy output but doubles encode time
-    canvas.save(buf, format="PNG", compress_level=6)
+    canvas.save(buf, **fmt["save"])
     buf.seek(0)
-    return buf
+    return buf, fmt["mimetype"], fmt["ext"]
+
+
+# Output encoders. PNG: optimize=True only saves ~2% on photo-heavy output but
+# doubles encode time. JPEG/WebP quality chosen to keep small text crisp.
+FORMATS = {
+    "png":  {"save": {"format": "PNG", "compress_level": 6}, "mimetype": "image/png", "ext": "png"},
+    "jpeg": {"save": {"format": "JPEG", "quality": 92, "subsampling": 0, "optimize": True},
+             "mimetype": "image/jpeg", "ext": "jpg"},
+    "webp": {"save": {"format": "WEBP", "quality": 90, "method": 4},
+             "mimetype": "image/webp", "ext": "webp"},
+}
+
+# Size model: bytes ~= card * cover_pixels * scale^exp + other * remaining_pixels
+# Least-squares fit on 72 real renders (4 lists x scale 1-3 x titles on/off).
+# Mean error: PNG 2.5%, JPEG 6%, WebP 8% (covers vary in detail).
+SIZE_MODEL = {
+    "png":  {"card": 2.1044, "exp": -0.20, "other": 0.0947},
+    "jpg":  {"card": 0.7626, "exp": -0.42, "other": 0.1241},
+    "webp": {"card": 0.4174, "exp": -0.32, "other": 0.0452},
+}

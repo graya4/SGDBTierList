@@ -144,11 +144,177 @@
   border: 0px solid #0c0;
 }
 
-.game-title-container {
-  flex: 0.5; /* Flex-grow ratio */      /* 1 part */
-  min-width: 150px;
-  border: 0px solid #00c;
+.roulette-odds { margin-top: 14px; }
+.roulette-odds h4 { margin: 0 0 6px; color: #4CAF50; font-size: 1rem; }
+#rouletteOddsTable { width: 100%; border-collapse: collapse; font-size: .9rem; }
+#rouletteOddsTable th {
+  color: #999; font-weight: normal; text-align: right; padding: 2px 6px;
+  border-bottom: 1px solid #444;
 }
+#rouletteOddsTable td { text-align: right; padding: 3px 6px; color: #ddd; white-space: nowrap; }
+#rouletteOddsTable th:first-child,
+#rouletteOddsTable td:first-child { text-align: left; }
+#rouletteOddsTable td:first-child {
+  color: var(--tier-color); font-weight: bold; white-space: normal;
+  border-left: 4px solid var(--tier-color); padding-left: 8px;
+}
+#rouletteOddsTable tr.empty td:not(:first-child) { color: #666; }
+.roulette-odds-empty { color: #888; font-size: .85rem; margin: 6px 0 0; }
+
+img.img-failed {
+  outline: 2px dashed #a33;
+  outline-offset: -2px;
+  background: #2a1a1a;
+}
+
+/* ---- Game title sidebar ---- */
+.game-title-container {
+  flex: 0 0 360px;
+  width: 360px;
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  background: #202020;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  overflow: hidden;
+  transition: flex-basis .25s ease, width .25s ease;
+}
+.title-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #2b2b2b;
+  flex-shrink: 0;
+}
+.title-sidebar-heading {
+  color: #4CAF50;
+  font-weight: bold;
+  font-size: 1.05rem;
+}
+#totalPlaytime {
+  margin-left: auto;
+  color: #4CAF50;
+  font-weight: bold;
+  font-size: .95rem;
+  white-space: nowrap;
+}
+.title-sidebar-toggle,
+.title-sidebar-toggle:hover {
+  margin: 0;
+  padding: 2px 6px;
+  background: none;
+  color: #aaa;
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform .25s ease;
+}
+.title-sidebar-toggle:hover { color: #fff; }
+.title-sidebar-body {
+  overflow-y: auto;
+  padding: 6px 10px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #444 transparent;
+}
+.title-tier { margin-top: 8px; }
+.title-tier > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #2b2b2b;
+  border-left: 4px solid var(--tier-color);
+  cursor: pointer;
+  user-select: none;
+}
+.title-tier > summary::-webkit-details-marker { display: none; }
+.title-tier > summary::before {
+  content: "\25B8";
+  color: #888;
+  font-size: .8rem;
+  transition: transform .15s ease;
+}
+.title-tier[open] > summary::before { transform: rotate(90deg); }
+.title-tier-name {
+  color: var(--tier-color);
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.title-tier-meta {
+  margin-left: auto;
+  color: #999;
+  font-size: .8rem;
+  white-space: nowrap;
+}
+.title-tier-empty {
+  color: #666;
+  font-size: .8rem;
+  font-style: italic;
+  padding: 4px 8px 0 16px;
+}
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 12px;
+  border-radius: 4px;
+  line-height: 1.3;
+}
+.title-row:hover { background: #2a2a2a; }
+.title-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--tier-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+}
+.title-row-name:focus {
+  white-space: normal;
+  background: #111;
+  border-radius: 3px;
+}
+.title-row-time {
+  color: var(--tier-color);
+  font-weight: bold;
+  white-space: nowrap;
+  font-size: .9rem;
+}
+.title-row-edit,
+.title-row-edit:hover {
+  margin: 0;
+  padding: 0 2px;
+  background: none;
+  font-size: .85rem;
+  opacity: .45;
+}
+.title-row:hover .title-row-edit { opacity: 1; }
+
+/* Collapsed: slim strip on the right edge */
+.game-title-container.collapsed {
+  flex-basis: 44px;
+  width: 44px;
+}
+.game-title-container.collapsed .title-sidebar-header {
+  flex-direction: column;
+  padding: 10px 4px;
+  height: 100%;
+}
+.game-title-container.collapsed .title-sidebar-toggle { transform: rotate(180deg); }
+.game-title-container.collapsed .title-sidebar-heading {
+  writing-mode: vertical-rl;
+  margin-top: 6px;
+}
+.game-title-container.collapsed #totalPlaytime,
+.game-title-container.collapsed .title-sidebar-body { display: none; }
 
 
 
@@ -356,6 +522,17 @@
         <hr>
 
         <div class="option-group">
+          <label class="option-label" for="imageFormat">Image Type:</label>
+          <select name="imageFormat" id="imageFormat">
+            <option value="png" selected>PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WEBP</option>
+          </select>
+        </div>
+
+        <hr>
+
+        <div class="option-group">
           <label class="option-label" for="showTextToggle">Display Game Titles:</label>
           <select name="showTextToggle" id="showTextToggle">
             <option value="1">Yes</option>
@@ -370,6 +547,16 @@
           <select name="showPlaytimeToggle" id="showPlaytimeToggle">
             <option value="1">Yes</option>
             <option value="0">No</option>
+          </select>
+        </div>
+
+        <hr>
+
+        <div class="option-group">
+          <label class="option-label" for="showOddsToggle">Show Roulette Odds:</label>
+          <select name="showOddsToggle" id="showOddsToggle">
+            <option value="0" selected>No</option>
+            <option value="1">Yes</option>
           </select>
         </div>
 
@@ -397,9 +584,10 @@
           </label>
           <input type="file" id="loadButton" accept=".json" style="display: none;">
           <button id="saveAsPngButton" class="chart-btn">
-            Render as PNG
+            Render Image
           </button>
         </div>
+        <p id="renderEstimate" style="margin:10px 0 0; color:#aaa; font-size:.85rem;">Estimated size: —</p>
         <div style="margin-top:15px; display:flex; flex-direction:column; gap:8px;">
           <label style="color:white; font-size:0.9rem;">List Title:</label>
           <input id="tierListTitle" type="text" placeholder="Enter title..."
@@ -412,6 +600,14 @@
         <div id="rouletteResult">
           <img class="resultImage" id="resultImage" src="" alt="Roulette Result" style="display:none;">
         </div>
+        <div class="roulette-odds">
+          <h4>Odds</h4>
+          <table id="rouletteOddsTable">
+            <thead><tr><th>Tier</th><th>Games</th><th>Each</th><th>Tier total</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p id="rouletteOddsEmpty" class="roulette-odds-empty">Add some games to see the odds.</p>
+        </div>
       </div>
     
     </div>
@@ -421,8 +617,15 @@
   <!-- Tiers container -->
   <div class="tiers container"></div>
 
-  <!-- Game title container -->
-  <div class="game-title-container"></div>
+  <!-- Game title sidebar (toggleable, grouped by tier) -->
+  <aside class="game-title-container" id="titleSidebar">
+    <div class="title-sidebar-header">
+      <button type="button" id="titleSidebarToggle" class="title-sidebar-toggle" title="Hide game titles">&#x276F;</button>
+      <span class="title-sidebar-heading">Games</span>
+      <span id="totalPlaytime"></span>
+    </div>
+    <div class="title-sidebar-body" id="titleSidebarBody"></div>
+  </aside>
 </div>
 
 
@@ -490,38 +693,86 @@
 
 
 
-document.getElementById('inputForm').addEventListener('submit', function(event) {
-    event.preventDefault(); // Prevent the default form submission
+// Retry images that fail to load (transient upstream/proxy errors). A saved list
+// whose proxy domain is unreachable falls back to this server's proxy.
+function attachImageRetry(img, maxRetries = 3) {
+  let attempt = 0;
+  img.addEventListener('load', () => img.classList.remove('img-failed'));
+  img.addEventListener('error', () => {
+    const src = img.getAttribute('src');
+    if (!src) return;
 
-    const formData = new FormData(this);
+    try {
+      const u = new URL(src, location.href);
+      if (u.pathname === '/proxy' && u.origin !== location.origin &&
+          u.searchParams.has('url') && !img.dataset.originFallback) {
+        img.dataset.originFallback = '1';
+        img.src = `${location.origin}/proxy?url=${encodeURIComponent(u.searchParams.get('url'))}`;
+        return;
+      }
+    } catch { /* not a parseable URL; plain retry below */ }
 
-    fetch('/submit', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        document.getElementById('response').innerText = data.response;
+    if (attempt >= maxRetries) {
+      img.classList.add('img-failed');
+      img.title = `Failed to load: ${img.alt}`;
+      return;
+    }
+    attempt++;
+    setTimeout(() => {
+      img.removeAttribute('src');  // re-setting the same src forces a new request
+      img.src = src;
+    }, 600 * 2 ** (attempt - 1));
+  });
+}
+window.attachImageRetry = attachImageRetry;
 
+let searchController = null;
+
+document.getElementById('inputForm').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const status = document.getElementById('response');
+    const query = document.getElementById('searchbar').value.trim();
+    if (!query) return;
+
+    // Cancel a search still in flight so stale results can't overwrite new ones
+    searchController?.abort();
+    searchController = new AbortController();
+    const { signal } = searchController;
+
+    status.innerText = 'Searching...';
+    try {
+        const response = await fetch('/submit', { method: 'POST', body: new FormData(this), signal });
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        const data = await response.json();
+
+        status.innerText = data.response;
         const imageContainer = document.querySelector('.scroll-container');
-        imageContainer.innerHTML = '';
+        const fragment = document.createDocumentFragment();
 
-        if (data.boxarts) {
-            data.boxarts.forEach(([url, title]) => {
-                const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
-                const imgElement = document.createElement('img');
-                imgElement.src = proxyUrl;
-                imgElement.alt = title;
-                imgElement.draggable = true;
-                imgElement.style.margin = '5px';
-                imgElement.addEventListener('dragstart', handleDragStart);
-                imgElement.addEventListener('dragend', handleDragEnd);
-                imgElement.addEventListener('dblclick', handleImageRemove);
-                imageContainer.appendChild(imgElement);
-            });
-        }
-    })
-    .catch(error => console.error('Error:', error));
+        (data.boxarts || []).forEach(([url, title]) => {
+            const imgElement = document.createElement('img');
+            imgElement.loading = 'lazy';      // only fetch what's scrolled into view
+            imgElement.decoding = 'async';
+            imgElement.alt = title;
+            imgElement.title = title;
+            imgElement.draggable = true;
+            imgElement.style.margin = '5px';
+            imgElement.addEventListener('dragstart', handleDragStart);
+            imgElement.addEventListener('dragend', handleDragEnd);
+            imgElement.addEventListener('dblclick', handleImageRemove);
+            attachImageRetry(imgElement);
+            imgElement.src = `/proxy?url=${encodeURIComponent(url)}`;
+            fragment.appendChild(imgElement);
+        });
+
+        imageContainer.replaceChildren(fragment);
+        imageContainer.scrollTop = 0;
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        status.innerText = 'Search failed — try again.';
+        console.error('Search error:', error);
+    }
 });
 
 document.getElementById('searchbar').addEventListener('keydown', function(event) {
@@ -579,151 +830,152 @@ function handleImageRemove(event) {
     updateAltTextColorAndOrder();
 }
 
+// Tier sections the user collapsed in the sidebar (kept across rebuilds)
+const collapsedTitleTiers = new WeakSet();
+
 function updateAltTextColorAndOrder() {
-  const gameTitleContainer = document.querySelector('.game-title-container');
-  gameTitleContainer.style.overflow = 'visible';
-  gameTitleContainer.innerHTML = ''; // Clear existing titles
+  const body = document.getElementById('titleSidebarBody');
+  if (!body) return;
+  const scrollTop = body.scrollTop;
+  body.innerHTML = '';
 
   let totalSeconds = 0;
 
-  const tiers = document.querySelectorAll('.tier');
-  tiers.forEach(tier => {
+  document.querySelectorAll('.tier').forEach(tier => {
     const labelEl = tier.querySelector('.label');
-    const tierColor = window.getComputedStyle(labelEl).getPropertyValue('--color').trim();
+    const tierColor = getComputedStyle(labelEl).getPropertyValue('--color').trim() || '#ccc';
+    const tierName = (tier.querySelector('.label span')?.textContent || '').trim() || '(unnamed)';
     const images = tier.querySelectorAll('.items img');
 
-    if (images.length > 0) {
-      images.forEach(image => {
-        // Row wrapper
-        const wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.justifyContent = 'space-between';
-        wrapper.style.gap = '6px';
-        wrapper.style.margin = '0';
-        wrapper.style.lineHeight = '1.3';
-        wrapper.style.padding = '2px 0 4px 0'; // extra space at bottom
+    const section = document.createElement('details');
+    section.className = 'title-tier';
+    section.style.setProperty('--tier-color', tierColor);
+    section.open = !collapsedTitleTiers.has(tier);
+    section.addEventListener('toggle', () => {
+      if (section.open) collapsedTitleTiers.delete(tier);
+      else collapsedTitleTiers.add(tier);
+    });
 
+    const summary = document.createElement('summary');
+    const nameEl = document.createElement('span');
+    nameEl.className = 'title-tier-name';
+    nameEl.textContent = tierName;
+    const metaEl = document.createElement('span');
+    metaEl.className = 'title-tier-meta';
+    summary.append(nameEl, metaEl);
+    section.appendChild(summary);
 
-        // Title element
-        const titleElement = document.createElement('p');
-        titleElement.textContent = image.alt || '';
-        titleElement.style.color = tierColor;
-        titleElement.contentEditable = true;
-        titleElement.style.flex = '1 1 auto';
-        titleElement.style.margin = '0';
-        titleElement.style.overflow = 'hidden';
-        titleElement.style.textOverflow = 'ellipsis';
-        titleElement.style.whiteSpace = 'nowrap';
-        titleElement.style.lineHeight = '1.3';
+    let tierSeconds = 0;
+    images.forEach(image => {
+      if (!image.dataset.hours) image.dataset.hours = "0";
+      if (!image.dataset.minutes) image.dataset.minutes = "0";
+      if (!image.dataset.seconds) image.dataset.seconds = "0";
+      const secs = parseTimeToSeconds(image.dataset.hours, image.dataset.minutes, image.dataset.seconds);
+      tierSeconds += secs;
 
-        bindAltTextSync(titleElement, image);
+      const row = document.createElement('div');
+      row.className = 'title-row';
 
-        // Ensure dataset exists
-        if (!image.dataset.hours) image.dataset.hours = "0";
-        if (!image.dataset.minutes) image.dataset.minutes = "0";
-        if (!image.dataset.seconds) image.dataset.seconds = "0";
+      const titleElement = document.createElement('span');
+      titleElement.className = 'title-row-name';
+      titleElement.textContent = image.alt || '';
+      titleElement.title = image.alt || '';
+      titleElement.contentEditable = 'plaintext-only';
+      bindAltTextSync(titleElement, image);
 
-        // Playtime text
-        const timeDisplay = document.createElement('span');
-        timeDisplay.style.color = tierColor;
-        timeDisplay.style.fontWeight = 'bold';
-        timeDisplay.textContent = formatSeconds(
-          parseTimeToSeconds(image.dataset.hours, image.dataset.minutes, image.dataset.seconds)
-        );
+      const timeDisplay = document.createElement('span');
+      timeDisplay.className = 'title-row-time';
+      timeDisplay.textContent = formatSeconds(secs);
 
-        // Edit button
-        // Edit button
-        const editBtn = document.createElement('button');
-        editBtn.textContent = '⏱️';
-        editBtn.style.background = 'transparent';
-        editBtn.style.border = 'none';
-        editBtn.style.cursor = 'pointer';
-        editBtn.style.color = tierColor;
-        editBtn.style.fontSize = '1rem';
-        editBtn.style.marginLeft = '6px';
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'title-row-edit';
+      editBtn.textContent = '⏱️';
+      editBtn.title = 'Edit playtime';
+      editBtn.addEventListener('click', () => openPlaytimeEditor(image));
 
-        editBtn.addEventListener('click', () => {
-          const modal = document.querySelector('.playtime-modal');
-          const hoursField = document.getElementById('playtimeHours');
-          const minutesField = document.getElementById('playtimeMinutes');
-          const secondsField = document.getElementById('playtimeSeconds');
-          const saveBtn = document.getElementById('savePlaytime');
-          const cancelBtn = document.getElementById('cancelPlaytime');
+      row.append(titleElement, timeDisplay, editBtn);
+      section.appendChild(row);
+    });
 
-          // Pre-fill with current values
-          hoursField.value = image.dataset.hours || "0";
-          minutesField.value = image.dataset.minutes || "0";
-          secondsField.value = image.dataset.seconds || "0";
-
-          modal.showModal();
-
-          const handleSave = () => {
-            const h = hoursField.value || "0";
-            const m = minutesField.value || "0";
-            const s = secondsField.value || "0";
-
-            image.dataset.hours = h;
-            image.dataset.minutes = m;
-            image.dataset.seconds = s;
-
-            timeDisplay.textContent = formatSeconds(parseTimeToSeconds(h, m, s));
-            calculateTotalPlaytime();
-
-            modal.close();
-            saveBtn.removeEventListener('click', handleSave);
-            cancelBtn.removeEventListener('click', handleCancel);
-          };
-
-          const handleCancel = () => {
-            modal.close();
-            saveBtn.removeEventListener('click', handleSave);
-            cancelBtn.removeEventListener('click', handleCancel);
-          };
-
-          saveBtn.addEventListener('click', handleSave);
-          cancelBtn.addEventListener('click', handleCancel);
-        });
-
-
-        // Runtime wrapper
-        const runtimeWrapper = document.createElement('div');
-        runtimeWrapper.style.display = 'inline-flex';
-        runtimeWrapper.style.alignItems = 'center';
-        runtimeWrapper.append(timeDisplay, editBtn);
-
-        // Add to row
-        wrapper.appendChild(titleElement);
-        wrapper.appendChild(runtimeWrapper);
-        gameTitleContainer.appendChild(wrapper);
-
-        // Add to total
-        totalSeconds += parseTimeToSeconds(
-          image.dataset.hours,
-          image.dataset.minutes,
-          image.dataset.seconds
-        );
-      });
-
-      // Spacer between tiers
-      gameTitleContainer.appendChild(document.createElement('br'));
+    if (images.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'title-tier-empty';
+      empty.textContent = 'No games';
+      section.appendChild(empty);
     }
+
+    metaEl.textContent = `${images.length} · ${formatSeconds(tierSeconds)}`;
+    totalSeconds += tierSeconds;
+    body.appendChild(section);
   });
 
-  // Total element
-  let totalElement = document.getElementById('totalPlaytime');
-  if (!totalElement) {
-    totalElement = document.createElement('p');
-    totalElement.id = 'totalPlaytime';
-    totalElement.style.color = 'green';
-    totalElement.style.fontWeight = 'bold';
-    totalElement.style.marginTop = '8px';
-    totalElement.style.fontSize = '2.3rem'
-    totalElement.style.textAlign = 'right';
-    gameTitleContainer.appendChild(totalElement);
-  }
-  totalElement.textContent = `Time Wasted: ${formatSeconds(totalSeconds)}`;
+  document.getElementById('totalPlaytime').textContent = `Time Wasted: ${formatSeconds(totalSeconds)}`;
+  body.scrollTop = scrollTop;
+  window.scheduleRenderEstimate?.();
 }
+
+function openPlaytimeEditor(image) {
+  const modal = document.querySelector('.playtime-modal');
+  const hoursField = document.getElementById('playtimeHours');
+  const minutesField = document.getElementById('playtimeMinutes');
+  const secondsField = document.getElementById('playtimeSeconds');
+  const saveBtn = document.getElementById('savePlaytime');
+  const cancelBtn = document.getElementById('cancelPlaytime');
+
+  hoursField.value = image.dataset.hours || "0";
+  minutesField.value = image.dataset.minutes || "0";
+  secondsField.value = image.dataset.seconds || "0";
+  modal.showModal();
+
+  const cleanup = () => {
+    modal.close();
+    saveBtn.removeEventListener('click', handleSave);
+    cancelBtn.removeEventListener('click', cleanup);
+  };
+  const handleSave = () => {
+    image.dataset.hours = hoursField.value || "0";
+    image.dataset.minutes = minutesField.value || "0";
+    image.dataset.seconds = secondsField.value || "0";
+    cleanup();
+    updateAltTextColorAndOrder();  // refreshes row, tier subtotal and total
+  };
+  saveBtn.addEventListener('click', handleSave);
+  cancelBtn.addEventListener('click', cleanup);
+}
+
+// Sidebar show/hide, remembered between visits
+(() => {
+  const sidebar = document.getElementById('titleSidebar');
+  const toggle = document.getElementById('titleSidebarToggle');
+  const apply = (collapsed) => {
+    sidebar.classList.toggle('collapsed', collapsed);
+    toggle.title = collapsed ? 'Show game titles' : 'Hide game titles';
+  };
+  apply(localStorage.getItem('titleSidebarCollapsed') === '1');
+  toggle.addEventListener('click', () => {
+    const collapsed = !sidebar.classList.contains('collapsed');
+    localStorage.setItem('titleSidebarCollapsed', collapsed ? '1' : '0');
+    apply(collapsed);
+  });
+})();
+
+// Keep tier headers in sync when tiers are renamed, recolored, added, moved or deleted
+(() => {
+  const tiersEl = document.querySelector('.tiers');
+  let pending = false;
+  new MutationObserver((mutations) => {
+    // ignore changes that only touch images (dragging, alt edits)
+    const relevant = mutations.some(m =>
+      m.type === 'characterData' ||
+      (m.type === 'attributes' && m.target.classList?.contains('label')) ||
+      (m.type === 'childList' && (m.target === tiersEl || m.target.classList?.contains('items')))
+    );
+    if (!relevant || pending) return;
+    pending = true;
+    requestAnimationFrame(() => { pending = false; updateAltTextColorAndOrder(); });
+  }).observe(tiersEl, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['style'] });
+})();
 
 // Helper: convert runtime → seconds
 function parseTimeToSeconds(h, m, s) {
@@ -741,20 +993,7 @@ function formatSeconds(seconds) {
 }
 
 function calculateTotalPlaytime() {
-  let totalSeconds = 0;
-  const images = document.querySelectorAll('.tier .items img');
-  images.forEach(image => {
-    totalSeconds += parseTimeToSeconds(
-      image.dataset.hours,
-      image.dataset.minutes,
-      image.dataset.seconds
-    );
-  });
-
-  const totalElement = document.getElementById('totalPlaytime');
-  if (totalElement) {
-    totalElement.textContent = `Time Wasted: ${formatSeconds(totalSeconds)}`;
-  }
+  updateAltTextColorAndOrder();
 }
 
 function bindAltTextSync(titleElement, image) {
@@ -770,6 +1009,7 @@ function bindAltTextSync(titleElement, image) {
   titleElement.addEventListener('blur', () => {
     titleElement.textContent = titleElement.textContent.replace(/\s+/g, ' ').trim();
     image.alt = titleElement.textContent;
+    window.scheduleRenderEstimate?.();  // title widths affect layout
   });
 }
 
