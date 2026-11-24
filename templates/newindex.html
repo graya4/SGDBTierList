@@ -313,7 +313,6 @@
 
 </style>
     <script type="module" src="../static/main.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>    
 <div class="main-container">
@@ -372,6 +371,19 @@
             <option value="1">Yes</option>
             <option value="0">No</option>
           </select>
+        </div>
+
+        <hr>
+
+        <div class="option-group" style="flex-direction:column; align-items:stretch; gap:6px;">
+          <label class="option-label" for="proxyServerInput">Image Proxy Server:</label>
+          <div style="display:flex; gap:6px;">
+            <input id="proxyServerInput" type="text" placeholder="http://127.0.0.1:5000"
+                   style="flex:1; padding:4px 8px; border-radius:4px; border:none; background:#dcdcdc; color:#000; font-size:14px;">
+            <button id="proxyServerButton" type="button"
+                    style="padding:4px 10px; border-radius:4px; border:none; cursor:pointer;">Apply</button>
+          </div>
+          <small id="proxyServerStatus" style="color:#aaa;"></small>
         </div>
       </div>
 

@@ -267,257 +267,109 @@ document.getElementById("roulette").addEventListener("click", listRoulette);
 
 
 
+// Rewrites every proxied image (".../proxy?url=...") to point at a new server origin.
+// Saved lists store absolute proxy URLs, so a list saved on one host breaks on another.
+function rewriteProxyServer(newServer) {
+  let origin;
+  try {
+    origin = new URL(newServer.trim()).origin;
+  } catch {
+    return null;
+  }
+
+  let changed = 0;
+  document.querySelectorAll('.tier .items img').forEach(img => {
+    let current;
+    try {
+      current = new URL(img.src, window.location.href);
+    } catch {
+      return;
+    }
+    if (current.pathname !== '/proxy' || !current.searchParams.has('url')) return;
+
+    const updated = `${origin}/proxy?url=${encodeURIComponent(current.searchParams.get('url'))}`;
+    if (img.src !== updated) {
+      img.src = updated;
+      changed++;
+    }
+  });
+  return { origin, changed };
+}
+
+const proxyServerInput = document.getElementById('proxyServerInput');
+const proxyServerStatus = document.getElementById('proxyServerStatus');
+proxyServerInput.value = window.location.origin;
+
+document.getElementById('proxyServerButton').addEventListener('click', () => {
+  const result = rewriteProxyServer(proxyServerInput.value);
+  if (!result) {
+    proxyServerStatus.textContent = 'Invalid address — include http:// or https://';
+    return;
+  }
+  proxyServerInput.value = result.origin;
+  proxyServerStatus.textContent = `Updated ${result.changed} image(s) to ${result.origin}`;
+});
+
 // Event listeners for the Save and Load buttons
 document.getElementById('saveButton').addEventListener('click', saveTierList);
 document.getElementById('loadButton').addEventListener('change', loadTierList);
 
-document.getElementById('saveAsPngButton').addEventListener('click', () => {
-  const tierListElement = document.querySelector('.tiers.container');
-  const gameTitleContainer = document.querySelector('.game-title-container');
-  const scrollContainer = document.getElementById('scroll-container');
-
-  // List title
+// Render the PNG on the server so browser extensions (injected CSS, dark-mode
+// filters, overlays, canvas noise) can't affect the output.
+async function renderTierListPng() {
+  const button = document.getElementById('saveAsPngButton');
   const title = document.getElementById("tierListTitle").value.trim() || "Tier List";
-  const titleElement = document.createElement('div');
-  titleElement.textContent = title;
-  titleElement.style.fontFamily = "'EB Garamond', serif";
-  titleElement.style.fontSize = "48px";
-  titleElement.style.color = "white";
-  titleElement.style.fontWeight = 'bold';
-  titleElement.style.textAlign = "center";
-  titleElement.style.marginBottom = "30px";
-  titleElement.style.width = "100%";
 
+  const tiers = Array.from(document.querySelectorAll('.tier')).map(tier => ({
+    tier: tier.querySelector('.label span').textContent,
+    color: getComputedStyle(tier.querySelector('.label')).getPropertyValue('--color').trim(),
+    images: Array.from(tier.querySelectorAll('.items img')).map(img => ({
+      src: img.src,
+      alt: img.alt,
+      hours: img.dataset.hours || "0",
+      minutes: img.dataset.minutes || "0",
+      seconds: img.dataset.seconds || "0"
+    }))
+  }));
 
-
-  // Quality scale
-  const scale = parseFloat(document.getElementById("quality").value);
-
-  // Show text toggle
-  const showText = parseInt(document.getElementById("showTextToggle").value || "1");
-
-  // Playtime toggle
-  const showPlaytimes = parseInt(document.getElementById("showPlaytimeToggle").value || "1");
-
-  // Hide UI elements
-  const settingsModal = document.querySelector('.settings-modal');
-  const controls = document.querySelector('.controls');
-  settingsModal.style.display = 'none';
-  if (controls) controls.style.display = 'none';
-  scrollContainer.style.display = 'none';
-  const buttons = document.querySelectorAll('button');
-  buttons.forEach(button => button.style.display = 'none');
-
-  const tiers = document.querySelectorAll('.tier');
-  tiers.forEach(tier => {
-    const excludeItems = tier.querySelectorAll('.exclude-item');
-    excludeItems.forEach(item => item.style.display = 'none');
-  });
-
-  // Clone the tier list
-  const tierListClone = tierListElement.cloneNode(true);
-  tierListClone.style.pointerEvents = 'none';
-
-  // Measure tier width
-  const measureMaxWidth = (container) => {
-    const temp = container.cloneNode(true);
-    temp.style.position = 'absolute';
-    temp.style.visibility = 'hidden';
-    temp.style.width = 'fit-content';
-    temp.style.whiteSpace = 'nowrap';
-    document.body.appendChild(temp);
-    const width = temp.offsetWidth;
-    document.body.removeChild(temp);
-    return width;
+  const payload = {
+    title,
+    scale: parseFloat(document.getElementById("quality").value) || 2,
+    showText: parseInt(document.getElementById("showTextToggle").value || "1"),
+    showPlaytimes: parseInt(document.getElementById("showPlaytimeToggle").value || "1"),
+    tiers
   };
 
-  function getRenderedTierHeight(tierListClone) {
-    const temp = tierListClone.cloneNode(true);
-    temp.style.position = 'absolute';
-    temp.style.visibility = 'hidden';
-    temp.style.pointerEvents = 'none';
-    temp.style.left = '-9999px';
-    temp.style.top = '-9999px';
-
-    document.body.appendChild(temp);
-    const height = temp.offsetHeight;
-    document.body.removeChild(temp);
-
-    return height;
-  }
-
-  if (document.getElementById('showTextToggle').value === '0') {
-    let tierWidth = measureMaxWidth(tierListElement);
-    tierListClone.style.width = `${tierWidth}px`;
-  }
-  else {
-    let tierWidth = measureMaxWidth(tierListElement) * 0.75;
-    console.log("TIER WIDTH: " + tierWidth);
-    if (tierWidth < 458){
-      tierWidth = 458
-    }
-    tierListClone.style.width = `${tierWidth}px`;
-  }
-
-  // Build title container only if showText === 1
-  let columnizedTitleContainer = null;
-  if (showText === 1) {
-    const titleTextNodes = Array.from(gameTitleContainer.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
-    const tempColumnWrapper = document.createElement('div');
-    tempColumnWrapper.style.position = 'absolute';
-    tempColumnWrapper.style.visibility = 'hidden';
-    tempColumnWrapper.style.font = window.getComputedStyle(gameTitleContainer).font;
-    titleTextNodes.forEach(node => {
-      const clone = node.cloneNode(true);
-      tempColumnWrapper.appendChild(clone);
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Rendering...';
+  try {
+    const response = await fetch('/render_png', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-    document.body.appendChild(tempColumnWrapper);
+    if (!response.ok) throw new Error(`Server returned ${response.status}`);
 
-    const tierHeight = getRenderedTierHeight(tierListClone);
-
-    columnizedTitleContainer = document.createElement('div');
-    columnizedTitleContainer.style.display = 'flex';
-    columnizedTitleContainer.style.flexDirection = 'row';
-    columnizedTitleContainer.style.color = '#D6BA8D';
-    columnizedTitleContainer.style.fontFamily = 'monospace';
-    columnizedTitleContainer.style.height = tierHeight + 'px';
-    columnizedTitleContainer.style.overflow = 'hidden';
-
-    let currentColumn = document.createElement('div');
-    currentColumn.style.display = 'flex';
-    currentColumn.style.flexDirection = 'column';
-    currentColumn.style.marginRight = '40px';
-    currentColumn.style.whiteSpace = 'nowrap';
-    columnizedTitleContainer.appendChild(currentColumn);
-
-    let currentHeight = 0;
-    let oldNodeHeight;
-    titleTextNodes.forEach(node => {
-      /*console.log("CURRENT HEIGHT: " + currentHeight)
-      console.log("TIER HEIGHT: " + tierHeight)
-      console.log(node.textContent)
-      console.log(node.offsetHeight)*/
-      const clone = node.cloneNode(true);
-      tempColumnWrapper.appendChild(clone);
-      let nodeHeight = clone.offsetHeight;
-      tempColumnWrapper.removeChild(clone);
-      //console.log("NODE HEIGHT: " + nodeHeight)
-      //console.log('----')
-
-      if (nodeHeight === 0){
-        nodeHeight = oldNodeHeight * 0.6
-      }
-
-    if (currentHeight + nodeHeight > tierHeight) {
-      currentColumn = document.createElement('div');
-      currentColumn.style.display = 'flex';
-      currentColumn.style.flexDirection = 'column';
-      currentColumn.style.marginRight = '40px';
-      currentColumn.style.whiteSpace = 'nowrap';
-      columnizedTitleContainer.appendChild(currentColumn);
-      oldNodeHeight = nodeHeight;
-      currentHeight = 0;
-    }
-
-    currentColumn.appendChild(node.cloneNode(true));
-    currentHeight += nodeHeight;
-    oldNodeHeight = nodeHeight;
-    });
-
-    document.body.removeChild(tempColumnWrapper);
-  }
-
-  // Hide playtimes in the cloned container if toggle is off
-  if (showPlaytimes === 0 && columnizedTitleContainer) {
-    const playtimeEls = columnizedTitleContainer.querySelectorAll('input[type="number"], span, #totalPlaytime');
-    playtimeEls.forEach(el => {
-      el.remove(); // strip them out entirely
-    });
-  }
-
-  // Container for rendering
-  // OUTER CONTAINER — vertical layout (title on its own row)
-  const tempContainer = document.createElement('div');
-  tempContainer.style.display = 'flex';
-  tempContainer.style.flexDirection = 'column';  // ✅ Title sits ABOVE
-  tempContainer.style.position = 'absolute';
-  tempContainer.style.top = '-9999px';
-  tempContainer.style.left = '-9999px';
-  tempContainer.style.backgroundColor = '#1A1A17';
-  tempContainer.style.padding = '6px';
-  tempContainer.style.overflow = 'hidden';
-
-  // Add TITLE first
-  tempContainer.appendChild(titleElement);
-
-  // INNER CONTAINER — horizontal layout for the actual list
-  const rowWrapper = document.createElement('div');
-  rowWrapper.style.display = 'flex';
-  rowWrapper.style.flexDirection = 'row';  // ✅ List + columns side-by-side
-  rowWrapper.style.alignItems = 'flex-start';
-  rowWrapper.style.gap = '20px';  // optional, can remove
-
-  // Add tier list and optional columnized titles
-  rowWrapper.appendChild(tierListClone);
-  if (showText === 1 && columnizedTitleContainer) {
-    rowWrapper.appendChild(columnizedTitleContainer);
-  }
-
-  // Add rowWrapper under the title
-  tempContainer.appendChild(rowWrapper);
-
-  // Add tempContainer to document for rendering
-  document.body.appendChild(tempContainer);
-
-
-  // Render and download PNG
-  html2canvas(tempContainer, {
-    useCORS: true,
-    scale: scale
-  }).then((canvas) => {
-    // Trim 1% off the right side
-    const trimmedCanvas = document.createElement('canvas');
-    const ctx = trimmedCanvas.getContext('2d');
-
-    const trimAmount = 4;
-    if (document.getElementById('showTextToggle').value === '0') {
-      console.log(canvas.height)
-      console.log(trimAmount)
-      trimmedCanvas.height = canvas.height - trimAmount;
-      trimmedCanvas.width = canvas.width;
-    }
-    else {
-      console.log(canvas.width)
-      console.log(trimAmount)
-      trimmedCanvas.width = canvas.width - trimAmount;
-      trimmedCanvas.height = canvas.height - trimAmount;
-    }
-
-    ctx.drawImage(canvas, 0, 0, trimmedCanvas.width, trimmedCanvas.height, 0, 0, trimmedCanvas.width, trimmedCanvas.height);
-
-    const dataURL = trimmedCanvas.toDataURL('image/png');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = dataURL;
-    const safeTitle = title.replace(/[^a-z0-9_\-]+/gi, "_");
-    link.download = `${safeTitle}.png`;
+    link.href = url;
+    link.download = `${title.replace(/[^a-z0-9_\-]+/gi, "_")}.png`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    console.error('Failed to render PNG:', error);
+    alert('Failed to render the PNG. Check the server console for details.');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
 
-
-    // Restore UI
-    document.body.removeChild(tempContainer);
-    scrollContainer.style.display = '';
-    tierListElement.style.width = '';
-    settingsModal.style.display = '';
-    if (controls) controls.style.display = '';
-    buttons.forEach(button => button.style.display = '');
-    tiers.forEach(tier => {
-      const excludeItems = tier.querySelectorAll('.exclude-item');
-      excludeItems.forEach(item => item.style.display = '');
-    });
-  }).catch((error) => {
-    console.error('Failed to capture and save as PNG:', error);
-  });
-});
+document.getElementById('saveAsPngButton').addEventListener('click', renderTierListPng);
 
 
 const createTier = (label = "Change me") => {

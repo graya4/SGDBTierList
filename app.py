@@ -2,11 +2,13 @@ from urllib import response
 
 import requests
 from static import TheRoulette
+from tier_render import render_tierlist
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 from io import BytesIO
 from steam_web_api import Steam
 import urllib.parse
+import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 api_file = open('API_KEY.txt')
@@ -21,21 +23,42 @@ steam = Steam(STEAM_KEY)
 CORS(app)
 
 
-def get_steam_info(appid):
-    steam_payload = {
-        "input_json": {
-            "ids": [{"appid": appid}],
-            "data_request": {"include_basic_info": True, "include_assets": True}
-        }
-    }
+STEAM_ASSET_BASE = "https://shared.akamai.steamstatic.com/store_item_assets/"
+STEAM_TYPE_GAME = 0  # EStoreAppType: 0 = game, 1 = demo, 4 = DLC, ...
 
-    r = requests.post(
+
+def get_steam_items(appids):
+    """Fetch store items (with assets) for many appids in one request."""
+    payload = {
+        "ids": [{"appid": int(a)} for a in appids],
+        "context": {"language": "english", "country_code": "US"},
+        "data_request": {"include_assets": True},
+    }
+    r = requests.get(
         "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/",
-        params={"key": STEAM_KEY},
-        json=steam_payload
+        params={"key": STEAM_KEY, "input_json": json.dumps(payload)},
+        timeout=10,
     )
-    print(r)
-    return r.json()
+    r.raise_for_status()
+    return r.json().get("response", {}).get("store_items", [])
+
+
+def steam_asset_url(item, *asset_keys):
+    """Build a full image URL from a store item's assets.
+
+    Newer games store art under a content hash (e.g. "<sha1>/library_600x900_2x.jpg"),
+    and some use different filenames entirely, so the path must come from the API
+    rather than being guessed. Returns the first key that exists, or None.
+    """
+    assets = item.get("assets") or {}
+    fmt = assets.get("asset_url_format")
+    if not fmt:
+        return None
+    for key in asset_keys:
+        filename = assets.get(key)
+        if filename:
+            return STEAM_ASSET_BASE + fmt.replace("${FILENAME}", filename)
+    return None
 
 # Function to get OAuth token for IGDB
 def get_igdb_access_token():
@@ -132,40 +155,21 @@ def steam_search(user_input):
     boxarts = []
 
     try:
-        user = steam.apps.search_games(user_input)
-        found_games = user['apps']
+        found_games = steam.apps.search_games(user_input)['apps']
+        appids = [x['id'][0] for x in found_games if x.get('id')]
+        if not appids:
+            return boxarts
 
-        def process_game(x):
-            try:
-                gameid = x['id'][0]
+        # One batched call replaces per-game get_app_details + image probing
+        for item in get_steam_items(appids):
+            if item.get('success') != 1 or item.get('type') != STEAM_TYPE_GAME:
+                continue
+            artlink = steam_asset_url(item, 'library_capsule_2x', 'library_capsule')
+            if artlink:
+                boxarts.append([artlink, item.get('name', '')])
 
-                artlink = (
-                    f"https://cdn.cloudflare.steamstatic.com/"
-                    f"steam/apps/{gameid}/library_600x900_2x.jpg"
-                )
-
-                details = steam.apps.get_app_details(gameid)
-
-                if (
-                    details[str(gameid)]['data']['type'] == "game"
-                    and requests.get(artlink, timeout=5).status_code != 404
-                ):
-                    return [artlink, x['name']]
-            except Exception:
-                pass
-
-            return None
-
-        with ThreadPoolExecutor(max_workers=20) as pool:
-            futures = [pool.submit(process_game, x) for x in found_games]
-
-            for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    boxarts.append(result)
-
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Steam search failed: {e}")
 
     return boxarts
 
@@ -313,6 +317,19 @@ def proxy():
         return send_file(BytesIO(image_data), mimetype=response.headers['Content-Type'])
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/render_png", methods=["POST"])
+def render_png():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get("tiers"), list):
+        return jsonify({"error": "Expected JSON with a 'tiers' list"}), 400
+    try:
+        buffer = render_tierlist(data)
+    except Exception as e:
+        print(f"Render failed: {e}")
+        return jsonify({"error": "Render failed"}), 500
+    return send_file(buffer, mimetype="image/png", download_name="tierlist.png")
 
 
 @app.route("/roulette_choose", methods=["POST"])
